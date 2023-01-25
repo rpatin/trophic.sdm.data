@@ -1,0 +1,31 @@
+---
+title: "trophic_sdm_data: preparing data for European Vertebrates trophic SDM"
+output: github_document
+---
+
+
+```{r echo=FALSE, message=FALSE, results="hide"}
+options(Encoding="UTF-8")
+library(badger)
+```
+
+
+<!-- `r badger::badge_cran_release("segclust2d", "orange")` -->
+<!-- `r badger::badge_cran_download("segclust2d", "grand-total", "yellow")` -->
+`r badger::badge_github_version("rpatin/trophic_sdm_data", "blue")`
+`r badger::badge_last_commit("rpatin/trophic_sdm_data")`
+
+# Introduction
+
+
+# News 
+
+# Installation
+
+If you want the newest `r badger::badge_devel("rpatin/trophic_sdm_data", "blue")`, you
+can install `trophic_sdm_data` from github  with:
+
+```{r, eval=FALSE}
+devtools::install_github("rpatin/trophic_sdm_data")
+```
+

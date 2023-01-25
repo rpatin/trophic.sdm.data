@@ -1,0 +1,28 @@
+Package: trophic_sdm_data
+Type: Package
+Title: preparing data for European Vertebrates trophic SDM
+Version: 0.0.1
+Authors@R: c(person("Remi", "Patin", role = c("aut", "cre"), email = "remi.patin@normale.fr"),
+             person("Giovanni", "Poggiato", role = "aut"))
+URL: https://github.com/rpatin/trophic_sdm_data
+BugReports: https://github.com/rpatin/trophic_sdm_data/issues
+Description: Provides tools to prepare gbif & IUCN data to be used for a trophic SDM
+License: GPL-3
+LazyData: TRUE
+RoxygenNote: 7.2.2
+Depends:
+    R (>= 4.0.0)
+Imports:
+    dplyr (>= 1.0.10),
+    ggplot2(>= 3.4.0),
+    magrittr,
+    cli
+Suggests:
+    knitr,
+    rmarkdown,
+    devtools,
+    spelling
+VignetteBuilder: knitr
+Encoding: UTF-8
+Language: en-US
+
