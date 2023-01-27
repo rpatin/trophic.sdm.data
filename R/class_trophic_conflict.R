@@ -198,6 +198,17 @@ detect_taxonomic_conflict <-
     x
   }
 
+### Argument check  --------------------------------------------------
+
+.detect_taxonomic_conflict.check.args <- 
+  function(metaweb, trophic.groups, checklist, project.name){
+    .check_metaweb(metaweb)
+    .check_trophic.groups(trophic.groups)
+    .check_checklist(checklist)
+    .fun_testIfInherits(project.name, "character")
+    TRUE
+  }
+
 ## 1.3 Methods -------------------------------------------------------------
 ### show.taxonomic_conflict  --------------------------------------------------
 ##' 
@@ -317,16 +328,6 @@ setMethod('plot', signature(x = 'taxonomic_conflict', y = 'missing'),
             })
             return(glist)
           })
-## Argument check  --------------------------------------------------
-
-.detect_taxonomic_conflict.check.args <- 
-  function(metaweb, trophic.groups, checklist, project.name){
-    .check_metaweb(metaweb)
-    .check_trophic.groups(trophic.groups)
-    .check_checklist(checklist)
-    .fun_testIfInherits(project.name, "character")
-    TRUE
-  }
 
 
 
