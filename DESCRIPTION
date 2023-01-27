@@ -14,10 +14,17 @@ Depends:
     R (>= 4.0.0)
 Imports:
     dplyr (>= 1.0.10),
+    data.table,
     ggplot2(>= 3.4.0),
+    cowplot,
+    scales,
+    terra,
+    tidyterra,
+    foreach,
     magrittr,
     cli
 Suggests:
+    doParallel,
     knitr,
     rmarkdown,
     devtools,

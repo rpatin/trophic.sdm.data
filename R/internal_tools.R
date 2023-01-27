@@ -16,7 +16,7 @@
 .filter_df_by_checklist <- function(df, checklist, col.name, project.name){
   df.name <- deparse(substitute(df))
   checklist.name <- deparse(substitute(checklist))
-
+  
   to.be.filtered <- !df[,col.name] %in% checklist$Code
   if (any(to.be.filtered)) {
     filtered.values <- df[to.be.filtered, col.name]
@@ -121,6 +121,26 @@
   TRUE
 }
 
+## Check positive integer ----------------------------
+##' @name .fun_testIfPosInt
+##' 
+##' @title Check if object is a positive integer
+##' 
+##' @description Check if object is a positive integer
+##' 
+##' @param x object to be checked
+##' @return a boolean
+##' @keywords internal
+.fun_testIfPosInt <- function(x)
+{
+  x.name <- deparse(substitute(x))
+  if (!is.numeric(x)) {
+    stop(paste0("\n", x.name, "must be a integer"))
+  } else if (any(x < 0) || any(x %% 1 != 0)) {
+    stop(paste0("\n", x.name, "must be a positive integer"))
+  }
+  TRUE
+}
 
 ## Check numeric ----------------------------
 ##' @name .fun_testIfNum
@@ -210,4 +230,71 @@
   writeLines(out.log, fileConn)
   close(fileConn)
   invisible(NULL)
+}
+
+## Check folder existance ----------------------------
+##' @name .fun_testIfDirExists
+##' 
+##' @title Check folder existence
+##' 
+##' @description Check whether a folder exists
+##' @param x folder to check
+##' @return a boolean
+##' @keywords internal
+
+.fun_testIfDirExists <- function(x){
+  x.name <- deparse(substitute(x))
+  if (!dir.exists(x)){
+    stop(paste0(x.name, " must be an existing folder"))
+  }
+  TRUE
+}
+
+
+
+## Register cluster ----------------------------
+##' @name .register_cluster
+##' 
+##' @title Register a cluster if need be
+##' 
+##' @description Register a cluster to be used with \code{foreach}
+##' @param nb.cpu number of CPU to use
+##' @return NULL
+##' @keywords internal
+
+.register_cluster <- function(nb.cpu){
+  if (nb.cpu > 1) {
+    if (.getOS() != "windows") {
+      if (!isNamespaceLoaded("doParallel")) { 
+        if(!requireNamespace('doParallel', quietly = TRUE)) stop("Package 'doParallel' not found")
+      }
+      doParallel::registerDoParallel(cores = nb.cpu)
+    } else {
+      warning("Parallelisation with `foreach` is not available for Windows. Sorry.")
+    }
+  }
+  invisible(NULL)
+}
+
+## Get OS name ----------------------------
+##' @name .getOS
+##' 
+##' @title get OS type
+##' 
+##' @description get OS type
+##' @return character
+##' @keywords internal
+
+.getOS = function()
+{
+  sysinf = Sys.info()
+  if (!is.null(sysinf))  {
+    os = sysinf['sysname']
+    if (os == 'Darwin') os = "mac"
+  } else  {
+    os = .Platform$OS.type
+    if (grepl("^darwin", R.version$os)) os = "mac"
+    if (grepl("linux-gnu", R.version$os)) os = "linux"
+  }
+  return(tolower(os))
 }
