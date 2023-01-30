@@ -298,3 +298,17 @@
   }
   return(tolower(os))
 }
+
+## Emulate ggplot2 color scale ----------------------------
+##' @name gg_color_hue
+##' 
+##' @title Emulate ggplot2 color scale
+##' 
+##' @description Emulate ggplot2 color scale
+##' @param n number of colors
+##' @return character
+##' @keywords internal
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}

@@ -151,17 +151,17 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   summary2.df <- success.df %>%
     group_by(species) %>%
-    summarise(mean_distance_to_iucn = mean(distance_to_iucn),
-              median_distance_to_iucn = mean(distance_to_iucn),
-              q5_distance_to_iucn = quantile(distance_to_iucn, probs = 0.05),
-              q25_distance_to_iucn = quantile(distance_to_iucn, probs = 0.25),
-              q75_distance_to_iucn = quantile(distance_to_iucn, probs = 0.75),
-              q95_distance_to_iucn = quantile(distance_to_iucn, probs = 0.95))
+    summarise(mean = round(mean(distance_to_iucn)),
+              median = round(mean(distance_to_iucn)),
+              q5 = round(quantile(distance_to_iucn, probs = 0.05)),
+              q25 = round(quantile(distance_to_iucn, probs = 0.25)),
+              q75 = round(quantile(distance_to_iucn, probs = 0.75)),
+              q95 = round(quantile(distance_to_iucn, probs = 0.95)))
   
   output.summary <- 
     left_join(summary.df, summary2.df, by = "species") %>% 
-    left_join(checklist, by = c("species" = "SpeciesName")) %>% 
-    mutate(prop.outside = round(outside.iucn/total.gbif*100, digits = 2))
+    mutate(prop.outside = round(outside.iucn/total.gbif*100, digits = 2)) %>% 
+    left_join(checklist, by = c("species" = "SpeciesName")) 
 
   output.success <- 
     left_join(success.df, checklist, by = c("species" = "SpeciesName"))
@@ -298,9 +298,30 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
             .fun_testIfPosInt(nb.cpu)
             .register_cluster(nb.cpu = nb.cpu)
             
+
+            
             x.summary <- summary_outsider(x, type = type)
             if (type != "Species") {
+              if(type != "Class"){
+                x.summary <- arrange(x.summary, Class, Order) 
+                x.summary <-
+                  mutate(x.summary,
+                         Class = factor(Class, levels = unique(x.summary$Class)),
+                         Order = factor(Order, levels = unique(x.summary$Order)))
+              }
+              if(type == "Family"){
+                x.summary <- arrange(x.summary, Class, Order, Family) 
+                x.summary <-
+                  mutate(x.summary,
+                         Family = factor(Family, levels = unique(x.summary$Family)))
+                
+              }
               type.fill <- type.range[max(1, which(type.range == type)-1)]
+              nfill <- length(unique(unlist(x.summary[,type])))+1
+              set.seed(42)
+              col.pal <- gg_color_hue(nfill+1)[sample(seq_len(nfill),
+                                                      size = nfill, 
+                                                      replace = FALSE)]
               g <- ggplot(x.summary)+
                 geom_boxplot(aes(x = get(type),
                                  fill = get(type.fill),
@@ -311,17 +332,12 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                   "Distance to IUCN distribution",
                   label = label_number(suffix = "m", 
                                        scale_cut = cut_short_scale()[1:2]))+
-                scale_fill_discrete(type.fill)+
+                scale_fill_manual(type.fill,
+                                  values = col.pal)+
                 theme(axis.text.x = element_text(angle = 90,
                                                  hjust = 1,
-                                                 vjust = 0.5))
-              
-              if(type == "Class"){
-                g <- g +
-                  scale_x_discrete(type, limits = unlist(x.summary[,type]))
-              } else {
-                g <- g + scale_x_discrete(type)
-              }
+                                                 vjust = 0.5))+ 
+                scale_x_discrete(type)
               
               if (type == "Family") {
                 g <- g + 
