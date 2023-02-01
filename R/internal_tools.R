@@ -21,7 +21,7 @@
   if (any(to.be.filtered)) {
     filtered.values <- df[to.be.filtered, col.name]
     logfile <- paste0("filter_", df.name, "_" , col.name, ".log")
-    cli::cli_alert_warning("{length(filtered.values)} {col.name} values were not found in {checklist.name} and will be removed from {df.name}. Filtered values will be written to log/{logfile}", wrap = TRUE)
+    cli::cli_alert_warning("{length(filtered.values)} {col.name} values were not found in {checklist.name} and will be removed from {df.name}.", wrap = TRUE)
     .write_logfile(out.log = filtered.values, 
                    logfile = logfile, 
                    project.name = project.name)
@@ -217,18 +217,29 @@
 ##' 
 ##' @param out.log character to be written to the logfile
 ##' @param logfile file name
+##' @param open type of opening ('w' for standard, 'a' for appending)
 ##' @inheritParams taxonomic_conflict
 ##' @return NULL
 ##' @keywords internal
+##' 
+##' @importFrom cli cli_alert_info
 
-.write_logfile <- function(out.log, logfile, project.name){
+.write_logfile <- function(out.log, logfile, project.name, open = "w"){
   logdir <- paste0(project.name,"/log/")
   if (!dir.exists(logdir)) {
     dir.create(logdir, recursive = TRUE, showWarnings = FALSE)
   }
-  fileConn <- file(paste0(logdir,logfile))
-  writeLines(out.log, fileConn)
-  close(fileConn)
+  
+  thisfilename <- paste0(logdir,logfile)
+  
+  if (inherits(out.log, "data.frame")) {
+    write.csv(out.log, paste0(logdir,logfile))
+  } else {
+    fileConn <- file(thisfilename, open = open)
+    writeLines(out.log, fileConn)
+    close(fileConn)
+  }
+  cli_alert_info("Logs written to {thisfilename}")
   invisible(NULL)
 }
 
@@ -269,11 +280,13 @@
         if(!requireNamespace('doParallel', quietly = TRUE)) stop("Package 'doParallel' not found")
       }
       doParallel::registerDoParallel(cores = nb.cpu)
+      return(TRUE)
     } else {
       warning("Parallelisation with `foreach` is not available for Windows. Sorry.")
+      return(FALSE)
     }
   }
-  invisible(NULL)
+  FALSE
 }
 
 ## Get OS name ----------------------------
@@ -311,4 +324,23 @@
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+
+## Check whether a name is present in sampling effort  ----------------------------
+##' @name check_name_config
+##' 
+##' @title Check if a name is present in a sampling effort configuration
+##' 
+##' @description Check if a name is present in a sampling effort configuration
+##' @inheritParams sampling_effort
+##' @param thisname name to be checked
+##' @return vector
+##' @keywords internal
+
+check_name_config <- function(sampling.effort.config, thisname)
+{
+  sapply(sampling.effort.config, function(x){
+    thisname %in% x
+  })
 }
