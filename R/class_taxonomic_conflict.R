@@ -107,6 +107,7 @@ setClass("taxonomic_conflict",
 
 detect_taxonomic_conflict <- 
   function(metaweb, trophic.groups, checklist, project.name){
+    cli::cli_h1("Detect taxonomic conflicts")
     cli_progress_step("Argument check")
     .detect_taxonomic_conflict.check.args(metaweb = metaweb,
                                           trophic.groups = trophic.groups,

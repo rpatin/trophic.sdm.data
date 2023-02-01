@@ -24,8 +24,10 @@
 ##' @slot checklist a \code{data.frame} with information on all species of interest
 ##' @slot project.name a \code{character} indicating the folder in which logfiles 
 ##' and data may be written
-##' @slot species.failed a \code{character} listing all species for which no 
-##' data were found
+##' @slot gbif.failed a \code{data.frame} listing all species for which no 
+##' gbif data were found
+##' @slot iucn.failed a \code{data.frame} listing all species for which no 
+##' iucn distribution were found
 ##' 
 ##' @examples
 ##' 
@@ -45,10 +47,11 @@ setClass("gbif_outsider",
                         iucn.distrib = 'list',
                         checklist = 'data.frame',
                         project.name = 'character',
-                        species.failed = 'data.frame'),
+                        gbif.failed = 'data.frame',
+                        iucn.failed = 'data.frame'),
          validity = function(object){ 
            .check_checklist(object@checklist)
-           .fun_testIfInherits(project.name, "character")
+           .fun_testIfInherits(object@project.name, "character")
            .fun_testIfInherits(object@outsider, "data.frame")
            .fun_testIfInherits(object@data.summary, "data.frame")
            TRUE
@@ -61,7 +64,7 @@ setClass("gbif_outsider",
 ##' @rdname gbif_outsider
 ##' @export
 ##' @importFrom foreach foreach %dopar% 
-##' @importFrom cli cli_progress_step cli_progress_done
+##' @importFrom cli cli_progress_step cli_progress_done cli_h1 cli_h2
 ##' @importFrom data.table rbindlist first
 ##' @importFrom dplyr mutate
 
@@ -70,17 +73,23 @@ setClass("gbif_outsider",
 detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn, 
                                  project.name, nb.cpu = 1){
   
+  cli_h1("Detect gbif outsider")
+  cli_progress_step("Argument check")
   .detect_gbif_outsider.check.args(checklist = checklist,
                                    folder.gbif = folder.gbif,
                                    folder.iucn = folder.iucn,
                                    project.name = project.name,
                                    nb.cpu = nb.cpu)
   
-  .register_cluster(nb.cpu = nb.cpu)
+  has.cluster <- .register_cluster(nb.cpu = nb.cpu)
   
   listcode <- checklist$Code
   names(listcode) <- checklist$SpeciesName
   
+  cli_progress_done()
+  cli_h2("Loop on each species")
+  ## Species Loop ------------------------------------------------------------
+  if(has.cluster) cli_progress_step("Loop on species with a {nb.cpu}-core cluster")
   output.outsider <- foreach(this.species = names(listcode)) %dopar% {
     cli_progress_step(this.species)
     this.output <- load_gbif_data(species.name = this.species,
@@ -114,6 +123,13 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
                   "total.gbif" = total.gbif))
     }
   }
+  cli_progress_done()
+
+
+  ## Summary ------------------------------------------------------------
+  
+  cli_h2("Extract summary")
+  cli_progress_step("Failed Species")
   failed.df <- lapply(output.outsider, function(x){
     if (x$status == "failed"){
       return(data.frame(species = x$species, results = x$results))
@@ -121,16 +137,10 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
     NULL
   }) %>% rbindlist()
   
-  summary.df <- lapply(output.outsider, function(x){
-    if (x$status == "success"){
-      return(data.frame("species" = x$species,
-                        "outside.iucn" = nrow(x$results),
-                        "total.gbif" = x$total.gbif))
-    }
-    NULL
-  }) %>% rbindlist()
   
   
+  
+  cli_progress_step("Successfull species")
   success.df <- lapply(output.outsider, function(x){
     if (x$status == "success"){
       return(x$results)
@@ -138,6 +148,8 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
     NULL
   }) %>% rbindlist()
   
+  
+  cli_progress_step("Link to IUCN files")
   iucn.list <- lapply(output.outsider, function(x){
     if (x$status == "success"){
       if(length(x$species.iucn) > 1){
@@ -148,6 +160,16 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
     NULL
   })
   names(iucn.list) <- listcode
+  
+  cli_progress_step("Summary for successfull species")
+  summary.df <- lapply(output.outsider, function(x){
+    if (x$status == "success"){
+      return(data.frame("species" = x$species,
+                        "outside.iucn" = nrow(x$results),
+                        "total.gbif" = x$total.gbif))
+    }
+    NULL
+  }) %>% rbindlist()
   
   summary2.df <- success.df %>%
     group_by(species) %>%
@@ -162,11 +184,38 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
     left_join(summary.df, summary2.df, by = "species") %>% 
     mutate(prop.outside = round(outside.iucn/total.gbif*100, digits = 2)) %>% 
     left_join(checklist, by = c("species" = "SpeciesName")) 
-
+  
   output.success <- 
     left_join(success.df, checklist, by = c("species" = "SpeciesName"))
   output.failed <- 
     left_join(failed.df, checklist, by = c("species" = "SpeciesName"))
+  
+  ## Logs ------------------------------------------------------------
+  cli_progress_step("Write logs")
+  iucn.failed <- sapply(iucn.list, function(x){
+    if(is.null(x)){ 
+      return("No distribution found")
+    }
+    if(length(x) > 1){
+      return("Multiple distribution found")
+    }
+    NULL
+  }) %>% do.call('c',.)
+  iucn.failed.df <- 
+    data.frame(
+      "Code" = names(iucn.failed),
+      "SpeciesName" =  
+        sapply(names(iucn.failed), 
+               function(x) checklist$SpeciesName[which(checklist$Code == x)])
+      , 
+      "failed.iucn"= iucn.failed) %>% 
+    left_join( checklist, by = c("SpeciesName", "Code") )
+  rownames(iucn.failed.df) <- NULL
+  
+  .write_logfile(iucn.failed.df, logfile = "failed.iucn.csv", project.name = project.name)
+  .write_logfile(output.failed, logfile = "failed.gbif.csv", project.name = project.name)
+  
+  ## Output ------------------------------------------------------------
   
   output <- new("gbif_outsider")
   output@outsider <- output.success
@@ -174,14 +223,15 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   output@iucn.distrib <- iucn.list
   output@checklist <- checklist
   output@project.name <- project.name
-  output@species.failed <- output.failed
+  output@gbif.failed <- output.failed
+  output@iucn.failed <- iucn.failed.df
   output
 }
 
 ### Argument Check -----------------------------------
 
 .detect_gbif_outsider.check.args <- function(checklist, folder.gbif, folder.iucn,
-                                             project.name, nb.cpu = nb.cpu){
+                                             project.name, nb.cpu){
   .check_checklist(checklist)
   .fun_testIfInherits(folder.gbif, "character")
   .fun_testIfDirExists(folder.gbif)
@@ -298,7 +348,7 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
             .fun_testIfPosInt(nb.cpu)
             .register_cluster(nb.cpu = nb.cpu)
             
-
+            
             
             x.summary <- summary_outsider(x, type = type)
             if (type != "Species") {
@@ -371,11 +421,11 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                     scale_fill_manual(
                       "IUCN distribution",
                       values = c("#d95f02",
-                                 "#7570b3",
-                                 "#1b9e77",
-                                 "#e7298a",
-                                 "#66a61e"),
-                      na.value = "grey")
+                                          "#7570b3",
+                                          "#1b9e77",
+                                          "#e7298a",
+                                          "#66a61e"),
+                                          na.value = "grey")
                 }, type = "message")
               }
               if (nrow(df) > 0) {
