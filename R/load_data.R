@@ -40,8 +40,16 @@ load_gbif_data <- function(species.name, folder.gbif){
                                            "X",	"Y"))
     })
     if (inherits(test.colnames, "try-error")) {
-      browser()
       return("Column names not found")
+    } 
+    output <- 
+      output %>% 
+      filter(X >= -180, 
+             X <= 180,
+             Y >= -90,
+             Y <= 90)
+    if (nrow(output) == 0) {
+      return("Error with Latitude/Longitude")
     } 
     select(output, species,coordinatePrecision,distance_to_iucn,X,Y)
   }
