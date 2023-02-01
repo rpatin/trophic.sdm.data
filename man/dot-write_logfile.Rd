@@ -4,7 +4,7 @@
 \alias{.write_logfile}
 \title{Write a logfile}
 \usage{
-.write_logfile(out.log, logfile, project.name)
+.write_logfile(out.log, logfile, project.name, open = "w")
 }
 \arguments{
 \item{out.log}{character to be written to the logfile}
@@ -13,6 +13,8 @@
 
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
+
+\item{open}{type of opening ('w' for standard, 'a' for appending)}
 }
 \description{
 Write a logfile and create appropriate folders if needbe

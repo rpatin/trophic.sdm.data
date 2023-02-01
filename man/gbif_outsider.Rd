@@ -62,8 +62,11 @@ data for each species}
 \item{\code{project.name}}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
-\item{\code{species.failed}}{a \code{character} listing all species for which no 
-data were found}
+\item{\code{gbif.failed}}{a \code{data.frame} listing all species for which no 
+gbif data were found}
+
+\item{\code{iucn.failed}}{a \code{data.frame} listing all species for which no 
+iucn distribution were found}
 }}
 
 \examples{
