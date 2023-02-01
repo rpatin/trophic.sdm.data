@@ -26,6 +26,7 @@ trophic groups but with very different taxonomy (that would be problematic to mi
 in a trophic sdm)
 - detection of gbif observation outside of IUCN ranges and diagnostic of the distance 
 to IUCN distribution.
+- calculation of gbif sampling effort
 
 # Installation
 
