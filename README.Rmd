@@ -27,6 +27,7 @@ in a trophic sdm)
 - detection of gbif observation outside of IUCN ranges and diagnostic of the distance 
 to IUCN distribution.
 - calculation of gbif sampling effort
+- rasterization and buffer calculation for IUCN polygon ranges
 
 # Installation
 

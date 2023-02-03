@@ -142,6 +142,49 @@
   TRUE
 }
 
+
+## Check positive numeric ----------------------------
+##' @name .fun_testIfPosNum
+##' 
+##' @title Check if object is a positive numeric
+##' 
+##' @description Check if object is a positive numeric
+##' 
+##' @param x object to be checked
+##' @return a boolean
+##' @keywords internal
+.fun_testIfPosNum <- function(x) {
+  x.name <- deparse(substitute(x))
+  if (!is.numeric(x)) {
+    stop(paste0("\n", x.name, "must be a numeric"))
+  } else if (any(x < 0)) {
+    stop(paste0("\n", x.name, "must be a positive numeric"))
+  }
+  TRUE
+}
+
+
+
+
+## Check 0-1 numeric ----------------------------
+##' @name .fun_testIf01
+##' 
+##' @title Check if object is included in 0-1
+##' 
+##' @description Check if object is included in 0-1
+##' 
+##' @param x object to be checked
+##' @return a boolean
+##' @keywords internal
+.fun_testIf01 <- function(x){
+  x.name <- deparse(substitute(x))
+  .fun_testIfPosNum(x)
+  if (any(x > 1)) {
+    stop(paste0("\n", x.name, "must be a 0 to 1 numeric"))
+  }
+  TRUE
+}
+
 ## Check numeric ----------------------------
 ##' @name .fun_testIfNum
 ##' 
@@ -223,6 +266,7 @@
 ##' @keywords internal
 ##' 
 ##' @importFrom cli cli_alert_info
+##' @importFrom utils write.csv
 
 .write_logfile <- function(out.log, logfile, project.name, open = "w"){
   logdir <- paste0(project.name,"/log/")
@@ -321,6 +365,7 @@
 ##' @param n number of colors
 ##' @return character
 ##' @keywords internal
+##' @importFrom grDevices hcl
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
@@ -343,4 +388,54 @@ check_name_config <- function(sampling.effort.config, thisname)
   sapply(sampling.effort.config, function(x){
     thisname %in% x
   })
+}
+
+## Check taxonomic group  ----------------------------
+##' @name check_taxa
+##' 
+##' @title Check if a taxonomic group is present in the checklist
+##' 
+##' @description Check if a taxonomic group is present in the checklist
+##' @inheritParams sampling_effort
+##' @param this.taxa \code{character} taxonomic group to be checked
+##' @return a boolean
+##' @keywords internal
+
+check_taxa <- function(this.taxa, checklist){
+  Species.range <- unique(checklist$SpeciesName)
+  Family.range <- unique(checklist$Family)
+  Order.range <- unique(checklist$Order)
+  Class.range <- unique(checklist$Class)
+  any(sapply(list(Species.range,
+                  Family.range,
+                  Order.range,
+                  Class.range), function(z){
+                    this.taxa %in% z
+                  }))
+}
+
+## find_iucn_index  ----------------------------
+##' @name find_iucn_index
+##' 
+##' @title Find a species in IUCN range data.frame
+##' 
+##' @description Find a species in IUCN range data.frame
+##' @param df a \code{data.frame}
+##' @param this.species a \code{character}, species to be found
+##' @param species_col a \code{character}, column name for the species name
+##' @param capitalized \code{boolean}, TRUE if column names are capitalized
+##' @return a boolean
+##' @keywords internal
+
+find_iucn_index <- function(df, this.species, species_col, capitalized){
+  if(capitalized){
+    presence_col <- "PRESENCE"
+    season_col <- "SEASONAL"
+  } else {
+    presence_col <- "presence"
+    season_col <- "seasonal"
+  } 
+  which(df[,species_col] == this.species &
+          df[,presence_col] %in% c(1,2) &
+          df[,season_col] %in% c(1,2))
 }

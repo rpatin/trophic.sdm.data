@@ -74,14 +74,16 @@ load_gbif_data <- function(species.name, folder.gbif){
 ##' 
 ##' @inheritParams gbif_outsider
 ##' @param species.code a \code{character} corresponding to the species code
+##' @param filetype a \code{character} (\emph{default} \code{'.tif'}) determining
+##' the file extension to be matched
 ##' @return a data.frame or a character if the loading failed
 ##' @export
 
-locate_iucn_distribution <- function(species.code, folder.iucn){
+locate_iucn_distribution <- function(species.code, folder.iucn, filetype = ".tif"){
   .locate_iucn_distribution.check.args(species.code = species.code,
                                        folder.iucn = folder.iucn)
   all.files <- list.files(path = folder.iucn, include.dirs = TRUE, recursive = TRUE)
-  selected.files <- all.files[grepl(x = all.files, pattern = ".tif", fixed = TRUE)]
+  selected.files <- all.files[grepl(x = all.files, pattern = filetype, fixed = TRUE)]
   selected.files <- selected.files[grepl(x = selected.files, pattern = species.code, fixed = TRUE)]
   if (length(selected.files) == 0) {
     return(NULL)
