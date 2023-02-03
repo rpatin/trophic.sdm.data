@@ -63,10 +63,14 @@ setClass("gbif_outsider",
 ##' 
 ##' @rdname gbif_outsider
 ##' @export
+##' @inheritParams .register_cluster
 ##' @importFrom foreach foreach %dopar% 
 ##' @importFrom cli cli_progress_step cli_progress_done cli_h1 cli_h2
 ##' @importFrom data.table rbindlist first
 ##' @importFrom dplyr mutate
+##' @importFrom stats quantile median
+##' @importFrom rlang .data
+##' @importFrom utils capture.output
 
 
 
@@ -200,7 +204,7 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
       return("Multiple distribution found")
     }
     NULL
-  }) %>% do.call('c',.)
+  }) %>% do.call('c', .data)
   iucn.failed.df <- 
     data.frame(
       "Code" = names(iucn.failed),
@@ -281,6 +285,7 @@ setMethod('show', signature('gbif_outsider'),
 ##' @export
 ##' @importFrom dplyr group_by summarise arrange across right_join
 ##' @importFrom magrittr "%>%"
+##' @importFrom rlang .data
 ##' 
 
 
@@ -304,13 +309,13 @@ summary_outsider <- function(object, type = "Class") {
       q95 = quantile(median, probs = 0.95),
       median = median(median),
       .groups = "drop")
-  if(type == "Order"){
+  if (type == "Order") {
     object.summary <- object@outsider %>% 
       group_by(Class, Order) %>% 
       summarise(Code = first(Code),
                 .groups = "drop") %>%
       select(-Code) %>% 
-      right_join(., object.summary, by = "Order") %>% 
+      right_join(.data, object.summary, by = "Order") %>% 
       arrange(Class, Order)
   }
   if(type == "Family"){
@@ -319,7 +324,7 @@ summary_outsider <- function(object, type = "Class") {
       summarise(Code = first(Code),
                 .groups = "drop") %>%
       select(-Code) %>%
-      right_join(., object.summary, by = "Family") %>% 
+      right_join(.data, object.summary, by = "Family") %>% 
       arrange(Class, Order, Family)
   }
   object.summary
@@ -329,6 +334,7 @@ summary_outsider <- function(object, type = "Class") {
 ##' 
 ##' @rdname gbif_outsider
 ##' @export
+##' @param x a \code{gbif_outsider} object
 ##' @param plot.folder a path to store plot results when \code{type = "Species"}
 ##' @importFrom ggplot2 ggplot geom_boxplot aes ggtitle scale_y_log10
 ##'  scale_fill_discrete scale_x_discrete theme geom_point scale_fill_manual
@@ -339,6 +345,7 @@ summary_outsider <- function(object, type = "Class") {
 ##' @importFrom magrittr "%>%"
 ##' @importFrom foreach foreach "%dopar%"
 ##' @importFrom cowplot save_plot
+##' @importFrom grDevices cm
 
 setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
           function(x, type = "Class", nb.cpu = 1, plot.folder = "gbif_outsider")

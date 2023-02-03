@@ -20,17 +20,24 @@
 ##' @param project.name a \code{character} indicating the folder in which logfiles 
 ##' and data may be written
 ##' 
-##' @slot class.summary a \code{data.frame} summarising the number of class-levels conflicts
-##' @slot class.conflict a \code{data.frame} with all row from \code{metaweb} with 
-##' class-level conflicts
-##' @slot order.summary a \code{data.frame} summarising the number of order-levels conflicts
-##' @slot order.conflict a \code{data.frame} with all row from \code{metaweb} with 
-##' order-level conflicts
+##' @slot class.summary a \code{data.frame} summarising the number of
+##'   class-levels conflicts
+##' @slot class.conflict a \code{data.frame} with all row from \code{metaweb}
+##'   with class-level conflicts
+##' @slot order.summary a \code{data.frame} summarising the number of
+##'   order-levels conflicts
+##' @slot order.conflict a \code{data.frame} with all row from \code{metaweb}
+##'   with order-level conflicts
+##' @slot family.summary a \code{data.frame} summarising the number of
+##'   family-levels conflicts
+##' @slot family.conflict a \code{data.frame} with all row from \code{metaweb}
+##'   with family-level conflicts
 ##' @slot metaweb a \code{data.frame} with all species interactions listed
 ##' @slot trophic.groups a \code{data.frame} with information on trophic groups
-##' @slot checklist a \code{data.frame} with information on all species of interest
-##' @slot project.name a \code{character} indicating the folder in which logfiles 
-##' and data may be written
+##' @slot checklist a \code{data.frame} with information on all species of
+##'   interest
+##' @slot project.name a \code{character} indicating the folder in which
+##'   logfiles and data may be written
 ##' 
 ##' @examples
 ##' 
@@ -102,6 +109,7 @@ setClass("taxonomic_conflict",
 ##' @rdname taxonomic_conflict
 ##' @importFrom cli cli_progress_step cli_progress_message
 ##' @importFrom dplyr select group_by filter mutate full_join left_join ungroup
+##' @importFrom methods new
 ##' @export
 ##' 
 
@@ -236,9 +244,11 @@ setMethod('show', signature('taxonomic_conflict'),
 ### summary_taxonomic_conflict  --------------------------------------------------
 ##' 
 ##' @rdname taxonomic_conflict
+##' @param object a \code{taxonomic_conflict} object
 ##' @param type a character, either 'Class', 'Order' or 'Family' determining
 ##' the level of conflict that needs to be summarised
 ##' @export
+##' @importFrom dplyr n 
 ##' 
 
 summary_conflict <- function(object, type = "Class") {
@@ -248,7 +258,7 @@ summary_conflict <- function(object, type = "Class") {
     group_by(Pred_Code_new) %>% 
     summarise(ntot = n())
   
-  if(type == "Class"){
+  if (type == "Class") {
     class.summary <- object@class.conflict %>% 
       group_by(Pred_Code_new, group, Class) %>% 
       summarise(Pred_Name = first(Pred_Name),
@@ -256,7 +266,7 @@ summary_conflict <- function(object, type = "Class") {
       left_join(pred.tot, by = "Pred_Code_new")
     return(class.summary)
   }
-  if(type == "Order"){
+  if (type == "Order") {
     order.summary <- object@order.conflict %>% 
       group_by(Pred_Code_new, group, Class, Order) %>% 
       summarise(Pred_Name = first(Pred_Name),
@@ -264,7 +274,7 @@ summary_conflict <- function(object, type = "Class") {
       left_join(pred.tot, by = "Pred_Code_new")
     return(order.summary)
   }
-  if(type == "Family"){
+  if (type == "Family") {
     family.summary <- object@family.conflict %>% 
       group_by(Pred_Code_new, group, Class, Order, Family) %>% 
       summarise(Pred_Name = first(Pred_Name),
@@ -277,12 +287,13 @@ summary_conflict <- function(object, type = "Class") {
 ### plot.taxonomic_conflict  --------------------------------------------------
 ##' 
 ##' @rdname taxonomic_conflict
+##' @param x a \code{taxonomic_conflict} object
 ##' @param type a character, either 'Class', 'Order' or 'Family' determining
 ##' the level of conflict that needs to be summarised
 ##' @export
 ##' @importFrom ggplot2 ggplot geom_bar facet_grid aes scale_fill_discrete
 ##'   ggtitle scale_x_discrete scale_y_continuous theme element_text
-##' @importFrom dplyr summarise group_by arrange
+##' @importFrom dplyr summarise group_by arrange semi_join
 ##' @importFrom magrittr "%>%"
 ##' 
 
@@ -304,9 +315,11 @@ setMethod('plot', signature(x = 'taxonomic_conflict', y = 'missing'),
               if(type == "Class"){
                 ordered_levels <- unique(x.summary.filtered$Class)
               } else if (type == "Order"){
-                ordered_levels <- unique(arrange(x.summary.filtered, Class, Order)$Order)
+                ordered_levels <- unique(arrange(x.summary.filtered, 
+                                                 Class, Order)$Order)
               } else {
-                ordered_levels <- unique(arrange(x.summary.filtered, Class, Order, Family)$Family)
+                ordered_levels <- unique(arrange(x.summary.filtered, 
+                                                 Class, Order, Family)$Family)
               }
             
               g <- ggplot(x.summary.filtered) +

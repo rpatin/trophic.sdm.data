@@ -17,14 +17,14 @@
 ##' @inheritParams gbif_outsider
 ##' @param data.mask a \code{SpatRaster} with the extent and the grid used 
 ##' in the project
+##' @param sampling.effort.config a named \code{list} with one element per effort
+##' layer to be calculated. Contains layer name as well as their associated taxa.
 ##' @slot data a \code{SpatRaster} with several layers of sampling effort
 ##' @slot config a \code{list} with the initial configuration of the sampling
 ##' effort calculation (taxonomic repartition)
 ##' @slot species.layer a \code{list} with the layer name corresponding to each 
 ##' species
 ##' @slot checklist a \code{data.frame} with information on all species of interest
-##' @slot gbif.failed a \code{data.frame} listing all species for which no 
-##' gbif data were found
 ##' @slot project.name a \code{character} indicating the folder in which logfiles 
 ##' and data may be written
 ##' 
@@ -61,9 +61,12 @@ setClass("sampling_effort",
 ##' 
 ##' @rdname sampling_effort
 ##' @export
+##' @inheritParams .register_cluster
 ##' @importFrom cli cli_progress_step cli_progress_done cli_h1 cli_alert_danger cli_h2
 ##' cli_process_failed cli_alert_info
 ##' @importFrom foreach "%do%" "%dopar%" foreach
+##' @importFrom terra vect project rasterize mask wrap unwrap
+##' @importFrom methods new
 
 calc_sampling_effort <- function(checklist, folder.gbif, 
                                  sampling.effort.config, data.mask,
@@ -98,10 +101,15 @@ calc_sampling_effort <- function(checklist, folder.gbif,
         return(names(sampling.effort.config)[which(this.check)]) 
       }
     }
-    NULL
+    "none"
   })
   names(species.layer) <- checklist$SpeciesName
-
+  species.unassigned <- which(unlist(species.layer) == "none")
+  if (length(species.unassigned) > 0) {
+    cli_alert_danger("the following species were assigned no sampling effort layer: \\
+                     {names(species.layer)[species.unassigned]}")
+    stop("Please review your sampling effort configuration")
+  }
   species.layer.df <- 
     data.frame(SpeciesName = names(species.layer),
                layer = unlist(species.layer))
@@ -208,20 +216,11 @@ calc_sampling_effort <- function(checklist, folder.gbif,
                 " are duplicated"))
   }
   # config.content <- do.call('c', sampling.effort.config)
-  Species.range <- unique(checklist$SpeciesName)
-  Family.range <- unique(checklist$Family)
-  Order.range <- unique(checklist$Order)
-  Class.range <- unique(checklist$Class)
+
   check.taxa.list <- lapply(sampling.effort.config, function(x){
-    sapply(x, function(y){
-      any(sapply(list(Species.range,
-                      Family.range,
-                      Order.range,
-                      Class.range), function(z){
-                        y %in% z
-                      }))
-    })
+    sapply(x, function(y) check_taxa(y, checklist))
   })
+  
   check.taxa <- sapply(check.taxa.list, function(x) any(x))
   if ( !all(check.taxa) ) {
     for (this.taxa in which(!check.taxa)) {
@@ -231,7 +230,7 @@ calc_sampling_effort <- function(checklist, folder.gbif,
     }
     stop(paste0("Some taxa given in ", config.argname, " were not found."))
   }
-  if (any(duplicated(unlist(sampling.effort.config)))){
+  if (any(duplicated(unlist(sampling.effort.config)))) {
     stop(paste0("Some taxa given in ", config.argname, " were duplicated."))
   }
   return(TRUE)
@@ -244,6 +243,7 @@ calc_sampling_effort <- function(checklist, folder.gbif,
 ##' @importMethodsFrom methods show
 ##' @param object an object of class \code{sampling_effort}
 ##' @export
+##' @importFrom terra nlyr
 ##' 
 
 setMethod('show', signature('sampling_effort'),
