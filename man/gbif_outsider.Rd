@@ -35,10 +35,14 @@ are stored}
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
+\item{nb.cpu}{number of CPU to use}
+
 \item{object}{an object of class \code{gbif_outsider}}
 
 \item{type}{a character, either 'Class', 'Order' or 'Family' determining
 the level of conflict that needs to be summarised}
+
+\item{x}{a \code{gbif_outsider} object}
 
 \item{plot.folder}{a path to store plot results when \code{type = "Species"}}
 }

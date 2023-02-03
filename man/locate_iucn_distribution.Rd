@@ -4,13 +4,16 @@
 \alias{locate_iucn_distribution}
 \title{Locate IUCN distribution}
 \usage{
-locate_iucn_distribution(species.code, folder.iucn)
+locate_iucn_distribution(species.code, folder.iucn, filetype = ".tif")
 }
 \arguments{
 \item{species.code}{a \code{character} corresponding to the species code}
 
 \item{folder.iucn}{a \code{character}: folders in which IUCN distributions
 are stored}
+
+\item{filetype}{a \code{character} (\emph{default} \code{'.tif'}) determining
+the file extension to be matched}
 }
 \value{
 a data.frame or a character if the loading failed

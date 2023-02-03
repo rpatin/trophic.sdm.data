@@ -7,6 +7,9 @@
 check_name_config(sampling.effort.config, thisname)
 }
 \arguments{
+\item{sampling.effort.config}{a named \code{list} with one element per effort
+layer to be calculated. Contains layer name as well as their associated taxa.}
+
 \item{thisname}{name to be checked}
 }
 \value{
