@@ -268,7 +268,7 @@
 ##' @importFrom cli cli_alert_info
 ##' @importFrom utils write.csv
 
-.write_logfile <- function(out.log, logfile, project.name, open = "w"){
+.write_logfile <- function(out.log, logfile, project.name, open = "w", silent = FALSE){
   logdir <- paste0(project.name,"/log/")
   if (!dir.exists(logdir)) {
     dir.create(logdir, recursive = TRUE, showWarnings = FALSE)
@@ -283,7 +283,9 @@
     writeLines(out.log, fileConn)
     close(fileConn)
   }
-  cli_alert_info("Logs written to {thisfilename}")
+  if (!silent) {
+    cli_alert_info("Logs written to {thisfilename}")
+  }
   invisible(NULL)
 }
 

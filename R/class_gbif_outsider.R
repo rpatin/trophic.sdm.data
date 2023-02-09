@@ -66,10 +66,9 @@ setClass("gbif_outsider",
 ##' @inheritParams .register_cluster
 ##' @importFrom foreach foreach %dopar% 
 ##' @importFrom cli cli_progress_step cli_progress_done cli_h1 cli_h2
-##' @importFrom data.table rbindlist first
-##' @importFrom dplyr mutate
+##' @importFrom data.table rbindlist 
+##' @importFrom dplyr mutate first
 ##' @importFrom stats quantile median
-##' @importFrom rlang .data
 ##' @importFrom utils capture.output
 
 
@@ -128,8 +127,8 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
     }
   }
   cli_progress_done()
-
-
+  
+  
   ## Summary ------------------------------------------------------------
   
   cli_h2("Extract summary")
@@ -196,15 +195,17 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   ## Logs ------------------------------------------------------------
   cli_progress_step("Write logs")
-  iucn.failed <- sapply(iucn.list, function(x){
-    if(is.null(x)){ 
-      return("No distribution found")
-    }
-    if(length(x) > 1){
-      return("Multiple distribution found")
-    }
-    NULL
-  }) %>% do.call('c', .data)
+  iucn.failed <- 
+    do.call('c',
+            sapply(iucn.list, function(x){
+              if(is.null(x)){ 
+                return("No distribution found")
+              }
+              if(length(x) > 1){
+                return("Multiple distribution found")
+              }
+              NULL
+            }))
   iucn.failed.df <- 
     data.frame(
       "Code" = names(iucn.failed),
@@ -285,7 +286,6 @@ setMethod('show', signature('gbif_outsider'),
 ##' @export
 ##' @importFrom dplyr group_by summarise arrange across right_join
 ##' @importFrom magrittr "%>%"
-##' @importFrom rlang .data
 ##' 
 
 
@@ -315,7 +315,7 @@ summary_outsider <- function(object, type = "Class") {
       summarise(Code = first(Code),
                 .groups = "drop") %>%
       select(-Code) %>% 
-      right_join(.data, object.summary, by = "Order") %>% 
+      right_join(object.summary, by = "Order") %>% 
       arrange(Class, Order)
   }
   if(type == "Family"){
@@ -324,7 +324,7 @@ summary_outsider <- function(object, type = "Class") {
       summarise(Code = first(Code),
                 .groups = "drop") %>%
       select(-Code) %>%
-      right_join(.data, object.summary, by = "Family") %>% 
+      right_join(object.summary, by = "Family") %>% 
       arrange(Class, Order, Family)
   }
   object.summary
@@ -359,27 +359,27 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
             
             x.summary <- summary_outsider(x, type = type)
             if (type != "Species") {
-              if(type != "Class"){
+              if (type != "Class") {
                 x.summary <- arrange(x.summary, Class, Order) 
                 x.summary <-
                   mutate(x.summary,
                          Class = factor(Class, levels = unique(x.summary$Class)),
                          Order = factor(Order, levels = unique(x.summary$Order)))
               }
-              if(type == "Family"){
+              if (type == "Family") {
                 x.summary <- arrange(x.summary, Class, Order, Family) 
                 x.summary <-
                   mutate(x.summary,
                          Family = factor(Family, levels = unique(x.summary$Family)))
                 
               }
-              type.fill <- type.range[max(1, which(type.range == type)-1)]
-              nfill <- length(unique(unlist(x.summary[,type])))+1
+              type.fill <- type.range[max(1, which(type.range == type) - 1)]
+              nfill <- length(unique(unlist(x.summary[,type]))) + 1
               set.seed(42)
-              col.pal <- gg_color_hue(nfill+1)[sample(seq_len(nfill),
-                                                      size = nfill, 
-                                                      replace = FALSE)]
-              g <- ggplot(x.summary)+
+              col.pal <- gg_color_hue(nfill + 1)[sample(seq_len(nfill),
+                                                        size = nfill, 
+                                                        replace = FALSE)]
+              g <- ggplot(x.summary) +
                 geom_boxplot(aes(x = get(type),
                                  fill = get(type.fill),
                                  ymin = q5, ymax = q95,
@@ -388,12 +388,12 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                 scale_y_log10(
                   "Distance to IUCN distribution",
                   label = label_number(suffix = "m", 
-                                       scale_cut = cut_short_scale()[1:2]))+
+                                       scale_cut = cut_short_scale()[1:2])) +
                 scale_fill_manual(type.fill,
-                                  values = col.pal)+
+                                  values = col.pal) +
                 theme(axis.text.x = element_text(angle = 90,
                                                  hjust = 1,
-                                                 vjust = 0.5))+ 
+                                                 vjust = 0.5)) + 
                 scale_x_discrete(type)
               
               if (type == "Family") {
@@ -420,7 +420,7 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                   grepl(x = this.iucn, pattern = ".tif")) {
                 this.distrib <- rast(this.iucn)
                 capture.output({
-                  g <- ggplot(df)+
+                  g <- ggplot(df) +
                     geom_spatraster(
                       data = mutate(this.distrib, 
                                     presence = factor(presence))
@@ -439,7 +439,7 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                 g <- g +
                   geom_point(data = df,
                              aes(x = X, y = Y, color = distance_to_iucn), 
-                             shape = 20)+
+                             shape = 20) +
                   scale_color_continuous("Distance to IUCN distribution")
               }
               g <- g + ggtitle(
