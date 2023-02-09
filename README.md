@@ -11,13 +11,14 @@ trophic_sdm_data: preparing data for European Vertebrates trophic SDM
 
 # News
 
-Pre-Release Features (v. 0.0.1) - detection of taxonomic conflicts
-within trophic groups with `detect_taxonomic_conflict()`. i.e. predator
-with some prey within the same trophic groups but with very different
-taxonomy (that would be problematic to mix in a trophic sdm) - detection
-of gbif observation outside of IUCN ranges and diagnostic of the
-distance to IUCN distribution. - calculation of gbif sampling effort -
-rasterization and buffer calculation for IUCN polygon ranges
+Pre-Release Features (v. 0.0.1) - workflow for trophic dataset based on
+gbif data - detection of taxonomic conflicts within trophic groups with
+`detect_taxonomic_conflict()`. i.e. predator with some prey within the
+same trophic groups but with very different taxonomy (that would be
+problematic to mix in a trophic sdm) - detection of gbif observation
+outside of IUCN ranges and diagnostic of the distance to IUCN
+distribution. - calculation of gbif sampling effort - buffer calculation
+for IUCN polygon ranges
 
 # Installation
 

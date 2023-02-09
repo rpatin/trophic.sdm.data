@@ -4,7 +4,7 @@
 \alias{.write_logfile}
 \title{Write a logfile}
 \usage{
-.write_logfile(out.log, logfile, project.name, open = "w")
+.write_logfile(out.log, logfile, project.name, open = "w", silent = FALSE)
 }
 \arguments{
 \item{out.log}{character to be written to the logfile}
