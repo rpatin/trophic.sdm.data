@@ -439,3 +439,91 @@ find_iucn_index <- function(df, this.species, species_col, capitalized){
           df[,presence_col] %in% c(1,2) &
           df[,season_col] %in% c(1,2))
 }
+
+
+## get_predator_summary  ----------------------------
+##' @name get_predator_summary
+##' 
+##' @title Get summary of predator occurrences
+##' 
+##' @description Get prevalence and summary of occurrences inside and outside
+##' IUCN range for a given predator.
+##' @param this.trophic a \code{data.frame} with occurrence data: columns cell,
+##' x, y, presence, inside_iucn, SpeciesName, Code and all prey occurrences as 
+##' columns 
+##' @return a data.frame
+##' @export
+
+get_predator_summary <- function(this.trophic){
+  tmp.inside <- this.trophic %>% 
+    group_by(SpeciesName, presence, inside_iucn) %>% 
+    summarize(n = n())
+  tmp.prevalence <- this.trophic %>% 
+    group_by(SpeciesName, presence) %>% 
+    summarize(n = n())
+  
+  # presence
+  presence <- tmp.prevalence$n[which(tmp.prevalence$presence == 1)]
+  if (length(presence) == 0) presence <- 0
+  # total absences
+  absence_tot <- tmp.prevalence$n[which(tmp.prevalence$presence == 0)]
+  if (length(absence_tot) == 0) absence_tot <- 0
+  # absence inside IUCN range
+  absence_inside <- tmp.inside$n[which(tmp.inside$presence == 0 &
+                                         tmp.inside$inside_iucn)]
+  if (length(absence_inside) == 0) absence_inside <- 0
+  # absence outside IUCN range
+  absence_outside <- absence_tot - absence_inside
+  prevalence <- presence/(presence+absence_tot)
+  nprey <- ncol(this.trophic)-7
+  return(
+    data.frame(
+      "SpeciesName" = first(this.trophic$SpeciesName),
+      "Code" = first(this.trophic$Code),
+      "presence" = presence,
+      "absence_tot" = absence_tot,
+      "absence_inside" = absence_inside,
+      "absence_outside" = absence_outside,
+      "prevalence" = prevalence,
+      "nprey" = nprey
+    )
+  )
+}
+
+## get_prey_summary  ----------------------------
+##' @name get_prey_summary
+##' 
+##' @title Get summary of prey occurrences
+##' 
+##' @description Get prevalence and summary of occurrences inside and outside
+##' IUCN range for the prey of a given predator.
+##' @param this.trophic a \code{data.frame} with occurrence data: columns cell,
+##' x, y, presence, inside_iucn, SpeciesName, Code and all prey occurrences as 
+##' columns 
+##' @return a data.frame
+##' @export
+
+get_prey_summary <- function(this.trophic){
+  list.prey <- colnames(this.trophic[,-(1:7)])
+  prey.summary <- foreach(this.prey = list.prey, .combine = 'rbind') %do% {
+    tmp_prevalence <- 
+      this.trophic %>% 
+      filter(presence == 1) %>% 
+      .[,..this.prey] 
+    prevalence_pred1 <- sum(tmp_prevalence)/nrow(tmp_prevalence)
+    prevalence <- sum(this.trophic[,..this.prey])/nrow(this.trophic[,..this.prey])
+    absence <- length(which(this.trophic[,..this.prey] == 0))
+    presence <- length(which(this.trophic[,..this.prey] == 1))
+    data.frame(
+      "SpeciesName" = first(this.trophic$SpeciesName),
+      "Code" = first(this.trophic$Code),
+      "Prey_Code" = this.prey,
+      "prevalence" = prevalence,
+      "absence" = absence,
+      "presence" = presence,
+      "prevalence_pred1" = prevalence_pred1
+    )
+  }
+  prey.summary
+}
+  
