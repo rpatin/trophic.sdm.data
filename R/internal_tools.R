@@ -42,12 +42,77 @@
 
 .check_metaweb <- function(x){
   x.name <- deparse(substitute(x))
-  metaweb.colnames <- c("Prey_Code_new", "Pred_Code_new")
+  metaweb.colnames <- c("Prey_Code_new", "Pred_Code_new", "Co_occur")
   
   .fun_testIfInherits(x, "data.frame")
   .fun_testdfcolnames(x, metaweb.colnames)
   .fun_testIfInherits(x$Prey_Code_new, "character")
   .fun_testIfInherits(x$Pred_Code_new, "character")
+  
+  passed.check <- TRUE
+  
+  # Duplicated Prey_Name
+  this.check <- 
+    x %>% 
+    group_by(Prey_Code_new) %>% 
+    summarize(Prey_Name = unique(Prey_Name),
+              .groups = 'keep') %>% 
+    mutate(n = n()) %>% 
+    filter(n > 1) %>% 
+    summarize(Prey_Code_new = first(Prey_Code_new))
+  
+  if (nrow(this.check) > 0) {
+    cli_alert_danger("The following Prey_Code_new have duplicated Prey_Name: {this.check$Prey_Code_new}")
+    passed.check <- FALSE
+  }
+  
+  # Duplicated Prey_Code_new
+  this.check <- 
+    x %>% 
+    group_by(Prey_Name) %>% 
+    summarize(Prey_Code_new = unique(Prey_Code_new),
+              .groups = 'keep') %>% 
+    mutate(n = n()) %>% 
+    filter(n > 1) %>% 
+    summarize(Prey_Name = first(Prey_Name))
+  
+  if (nrow(this.check) > 0) {
+    cli_alert_danger("The following Prey_Name have duplicated Prey_Code_new: {this.check$Prey_Name}")
+    passed.check <- FALSE
+  }
+  
+  # Duplicated Pred_Name
+  this.check <- 
+    x %>% 
+    group_by(Pred_Code_new) %>% 
+    summarize(Pred_Name = unique(Pred_Name),
+              .groups = 'keep') %>% 
+    mutate(n = n()) %>% 
+    filter(n > 1) %>% 
+    summarize(Pred_Code_new = first(Pred_Code_new))
+  
+  if (nrow(this.check) > 0) {
+    cli_alert_danger("The following Pred_Code_new have duplicated Pred_Name: {this.check$Pred_Code_new}")
+    passed.check <- FALSE
+  }
+  
+  # Duplicated Pred_Code_new
+  this.check <- 
+    x %>% 
+    group_by(Pred_Name) %>% 
+    summarize(Pred_Code_new = unique(Pred_Code_new),
+              .groups = 'keep') %>% 
+    mutate(n = n()) %>% 
+    filter(n > 1) %>% 
+    summarize(Pred_Name = first(Pred_Name))
+  
+  if (nrow(this.check) > 0) {
+    cli_alert_danger("The following Pred_Name have duplicated Pred_Code_new: {this.check$Pred_Name}")
+    passed.check <- FALSE
+  }
+  if (!passed.check) {
+    stop("Duplicated code or species name in metaweb")
+  }
   return(TRUE)
 }
 
@@ -74,9 +139,108 @@
   .fun_testIfInherits(x$Order, "character")
   .fun_testIfInherits(x$Family, "character")
   .fun_testIfInherits(x$SpeciesName, "character")
+  
+  this.check <- x$SpeciesName[duplicated(x$SpeciesName)]
+  if (length(this.check) > 0) {
+    cli_alert_danger("The following SpeciesName in {x.name} are duplicated: \\
+                     {this.check}")
+    stop("Duplicated SpeciesName in checklist")
+  }
+  
+  this.check <- x$Code[duplicated(x$Code)]
+  if (length(this.check) > 0) {
+    cli_alert_danger("The following Code in {x.name} are duplicated: \\
+                     {this.check}")
+    stop("Duplicated Code in checklist")
+  }
+
   return(TRUE)
 }
 
+
+## .check_metaweb_checklist  ----------------------------
+##' @name .check_metaweb_checklist
+##' 
+##' @title Check metaweb and checklist compatibility
+##' 
+##' @description Check that checklist and metaweb have the same code and 
+##' species name
+##' @inheritParams trophic_dataset
+##' @return a boolean
+
+.check_metaweb_checklist <- function(metaweb, checklist){
+  metaweb.name <- deparse(substitute(metaweb))
+  checklist.name <- deparse(substitute(checklist))
+  checklist_metaweb_prey <- 
+    group_by(metaweb, Prey_Code_new) %>% 
+    summarize(Prey_Name = first(Prey_Name))
+  checklist_metaweb_pred <- 
+    group_by(metaweb, Pred_Code_new) %>% 
+    summarize(Pred_Name = first(Pred_Name))
+  passed.check <- TRUE
+  # Prey ; Merge = Code 
+  this.check <-
+    checklist %>% 
+    select(Code, SpeciesName) %>% 
+    inner_join(checklist_metaweb_prey, by = c("Code" = "Prey_Code_new"))
+  
+  which.name <- which(this.check$SpeciesName != this.check$Prey_Name)
+  if (length(which.name) > 0) {
+    cli_alert_danger("Some values for {metaweb.name}$Prey_Name are different from \\
+                     {checklist.name}$SpeciesName.
+                     {metaweb.name}: {this.check$Prey_Name[which.name]}
+                     {checklist.name}: {this.check$SpeciesName[which.name]}")
+    passed.check <- FALSE
+  }
+  # Prey ; Merge = SpeciesName 
+  this.check <-
+    checklist %>% 
+    select(Code, SpeciesName) %>% 
+    inner_join(checklist_metaweb_prey, by = c("SpeciesName" = "Prey_Name"))
+  
+  which.name <- which(this.check$Code != this.check$Prey_Code_new)
+  if (length(which.name) > 0) {
+    cli_alert_danger("Some values for {metaweb.name}$Prey_Code_new are different from \\
+                     {checklist.name}$Code
+                     {metaweb.name}: {this.check$Prey_Code_new[which.name]}
+                     {checklist.name}: {this.check$Code[which.name]}")
+    passed.check <- FALSE
+  }
+  
+  # Predator ; Merge = Code 
+  this.check <-
+    checklist %>% 
+    select(Code, SpeciesName) %>% 
+    inner_join(checklist_metaweb_pred, by = c("Code" = "Pred_Code_new"))
+  
+  which.name <- which(this.check$SpeciesName != this.check$Pred_Name)
+  if (length(which.name) > 0) {
+    cli_alert_danger("Some values for {metaweb.name}$Pred_Name are different from \\
+                     {checklist.name}$SpeciesName.
+                     {metaweb.name}: {this.check$Pred_Name[which.name]}
+                     {checklist.name}: {this.check$SpeciesName[which.name]}")
+    passed.check <- FALSE
+  }
+  # Predator ; Merge = SpeciesName 
+  this.check <-
+    checklist %>% 
+    select(Code, SpeciesName) %>% 
+    inner_join(checklist_metaweb_pred, by = c("SpeciesName" = "Pred_Name"))
+  
+  which.name <- which(this.check$Code != this.check$Pred_Code_new)
+  if (length(which.name) > 0) {
+    cli_alert_danger("Some values for {metaweb.name}$Pred_Code_new are different from \\
+                     {checklist.name}$Code
+                     {metaweb.name}: {this.check$Pred_Code_new[which.name]}
+                     {checklist.name}: {this.check$Code[which.name]}")
+    passed.check <- FALSE
+  }
+  
+  if (!passed.check) {
+    stop(paste0(metaweb.name, " and ", checklist.name, " have incompatible species name or code"))
+  }
+  TRUE
+}
 
 ## Check trophic.groups ----------------------------
 ##' @name .check_trophic.groups
