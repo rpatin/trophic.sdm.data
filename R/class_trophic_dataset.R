@@ -66,14 +66,8 @@
 ##' occurrence data for each species.
 ##' @slot file.trophic.link  a named \code{vector} with a path to filtered
 ##' trophic data for each species.
-##' @slot file.trophic.raw.link a named \code{vector} with a path to unfiltered
-##' trophic data for each species. Those files are used as a base to apply new 
-##' filter rule.
-##' @slot metaweb a \code{data.frame} with all original species interactions listed.
 ##' @slot metaweb.filtered a \code{data.frame} with all species interactions 
 ##' that remain after filtering of species and prey.
-##' @slot checklist a \code{data.frame} with information on all species of
-##'   interest
 ##' @slot checklist.filtered a \code{data.frame} with information on all species 
 ##'   that remain after filtering of species.
 ##' @slot kept.species a \code{character} vector with all species kept
@@ -82,6 +76,8 @@
 ##' @slot kept.prey a named \code{list} with the prey kept for each species
 ##' @slot filtered.prey a named \code{list} vector with the prey removed for 
 ##' each species as well as the motivation of removal
+##' @slot param.raw a \code{list} with information to regenerate the raw 
+##' unfiltered dataset. 
 ##' @slot param a \code{list} with all parameters used to generate the dataset
 ##' @slot datatype a \code{character} determining the origin of the dataset:
 ##' either 'gbif' or 'iucn'.
@@ -117,16 +113,14 @@ setClass("trophic_dataset",
                         summary.predator = "data.frame",
                         summary.prey = "data.frame",
                         file.occurrence.link = "character",
-                        file.trophic.raw.link = "character",
                         file.trophic.link = "character",
-                        metaweb = "data.frame",
                         metaweb.filtered = "data.frame",
-                        checklist = "data.frame",
                         checklist.filtered = "data.frame",
                         kept.species = "character",
                         filtered.species = "character",
                         kept.prey = "list",
                         filtered.prey = "list",
+                        param.raw = "list",
                         param = "list", 
                         datatype = "character",
                         project.name = "character",
@@ -145,6 +139,18 @@ setClass("trophic_dataset",
            .fun_testIfIn(obejct@datatype, c("iucn","gbif"))
            .fun_testIfInherits(object@data.mask, "SpatRaster")
            .fun_testIfInherits(object@project.name, "character")
+           if (!all(c("summary.occurrence.raw",
+                      "summary.predator.raw",
+                      "summary.prey.raw",
+                      "file.trophic.raw.link",
+                      "metaweb",
+                      "checklist",
+                      "kept.species.raw",
+                      "filtered.species.raw",
+                      "kept.prey.raw",
+                      "filtered.prey.raw") %in% names(param.raw))) {
+             stop("summary.raw is missing elements")
+           }
            TRUE
          })
 
@@ -176,11 +182,14 @@ setMethod('show', signature('trophic_dataset'),
             cli_li("Species interactions removed: {percent.rm}%")
             
             cli_h2("Parameters")
+            
+            cli_h3("Occurrence selection")
+            cli_li("Quantile used for evaluating absences as certain = {unique(param$quantile.absence.certain)}")
+            
             cli_h3("Species Filtering")
             cli_li("Minimum gbif occurrences = {param$min.gbif}")
-            cli_li("Quantile used for evaluating absences as certain = {unique(param$quantile.absence.certain)}")
-            cli_li("Minimum presence = {param.filter$min.presence}")
-            cli_li("Minimum absence  = {param.filter$min.absence}")
+            cli_li("Minimum presence in final dataset = {param.filter$min.presence}")
+            cli_li("Minimum absence in final dataset = {param.filter$min.absence}")
             
             cli_h3("Prey filtering")
             cli_li("Minimum prey absence  = {param.filter$min.absence.prey}")
@@ -199,61 +208,42 @@ setMethod('show', signature('trophic_dataset'),
 
 
 
-### filter_dataset.trophic_dataset    --------------------------------------------------
+### filter_species    ------------------------------------------
 ##'
 ##' @rdname trophic_dataset
 ##' @param x an object of class \code{trophic_dataset}
 ##' @export
+##' @importFrom dplyr select all_of
 ##'
 
 
-setGeneric("filter_dataset", def = function(x, ...) {
-  standardGeneric("filter_dataset") 
+setGeneric("filter_species", def = function(x, ...) {
+  standardGeneric("filter_species") 
 })
 
 ##' @rdname trophic_dataset
 ##' @export
 ##' @importFrom cli cli_alert_success
-setMethod('filter_dataset', signature(x = 'trophic_dataset'),
+setMethod('filter_species', signature(x = 'trophic_dataset'),
           function(x,
                    min.presence,
-                   min.absence,
-                   subsample.min.prevalence,
-                   subsample.max.absence,
-                   min.prevalence.prey,
-                   min.absence.prey) {
+                   min.absence) {
             # browser()
             ### Argument check and setup --------------------------------------
-            args <- .filter_dataset.check.args(min.presence = min.presence,
-                                               min.absence = min.absence,
-                                               subsample.min.prevalence = subsample.min.prevalence,
-                                               subsample.max.absence = subsample.max.absence,
-                                               min.prevalence.prey = min.prevalence.prey,
-                                               min.absence.prey = min.absence.prey)
+            cli_h2("Parameter check")
+            args <- .filter_dataset.check.args(type = "filter_species",
+                                               min.presence = min.presence,
+                                               min.absence = min.absence)
             
             for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
             
-            # browser()
-            # setup param
             x@param$param.filter$min.presence <- min.presence
             x@param$param.filter$min.absence <- min.absence
-            x@param$param.filter$subsample.min.prevalence <- subsample.min.prevalence
-            x@param$param.filter$subsample.max.absence <- subsample.max.absence
-            x@param$param.filter$min.prevalence.prey <- min.prevalence.prey
-            x@param$param.filter$min.absence.prey <- min.absence.prey
             
             # setup dir
             project.name <- x@project.name
-            dataset.dir <- paste0(project.name, "/trophic_dataset/")
-            if (!dir.exists(dataset.dir)) dir.create(dataset.dir, recursive = TRUE, showWarnings = FALSE)
-            raw.dir <- paste0(project.name, "/trophic_dataset_raw/")
-            if (!dir.exists(raw.dir)) dir.create(raw.dir, recursive = TRUE, showWarnings = FALSE)
-            occurrence.dir <- paste0(project.name, "/occurrence_dataset/")
-            if (!dir.exists(occurrence.dir)) dir.create(occurrence.dir, recursive = TRUE, showWarnings = FALSE)
-           
-            # reset files
-            file.remove(list.files(dataset.dir, full.names = TRUE))
-            x@file.trophic.link <- x@file.trophic.raw.link
+            folder.names <- set_folder(project.name)
+            for (argi in names(folder.names)) { assign(x = argi, value = folder.names[[argi]]) }
             
             # code-name converter
             listcode.full <- checklist$Code
@@ -261,21 +251,22 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
             listname.full <- checklist$SpeciesName
             names(listname.full) <- checklist$Code
             
-            # browser()
             ### Filtering Species ----------------------------------------------
             if (min.presence > 0 || min.absence > 0) {
               cli_h2("Filter species")
               cli_alert_info("Remove species with less then {min.presence} presence \\
                      or less than {min.absence} absence")
-              summary.occurrence <- x@summary.occurrence %>% 
+              # browser()
+              summary.occurrence <- x@summary.predator %>% 
                 filter(presence < min.presence |
-                         absence < min.absence)
-              if (nrow(summary.occurrence) == 0){
-                cli_alert_success("No species require subsampling")
+                         absence_tot < min.absence)
+              if (nrow(summary.occurrence) == 0) {
+                cli_alert_success("No species to remove")
               } else {
-                for(this.species in summary.occurrence$SpeciesName){
+                for (this.species in summary.occurrence$SpeciesName) {
                   cli_progress_step("Removing {this.species}")
-                  this.reason <- "Not enough data after rasterization"
+                  # browser()
+                  this.reason <- "Not enough data after rasterization and prey filtering"
                   names(this.reason) <- this.species
                   this.code <- listcode.full[this.species]
                   
@@ -288,17 +279,23 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
                     filter(SpeciesName != this.species)
                   
                   # Remove species in predator dataset
-                  summary.prey.rm <-  
-                    x@summary.prey %>% 
-                    filter(Prey_Code == this.code)
+                  if ( nrow(x@summary.prey) == 0 ) {
+                    summary.prey.rm <- data.frame()
+                  } else {
+                    summary.prey.rm <-  
+                      x@summary.prey %>% 
+                      filter(Prey_Code == this.code)
+                  }
                   if (nrow(summary.prey.rm) > 0) {
                     for (this.pred in summary.prey.rm$SpeciesName) {
                       this.trophic <- fread(x@file.trophic.link[this.pred])
-                      this.trophic[, this.code] <- NULL
+                      this.trophic <- 
+                        this.trophic %>%
+                        select(-all_of(this.code))
                       this.index <- which(x@summary.predator$SpeciesName == this.pred)
                       x@summary.predator$nprey[this.index] <- 
-                        x@summary.predator$nprey[this.index] -1
-                      this.file <- paste0(dataset.dir,this.code,".csv.gz")
+                        x@summary.predator$nprey[this.index] - 1
+                      this.file <- paste0(dataset.dir,listcode.full[this.pred],".csv.gz")
                       fwrite(this.trophic, file = this.file)  
                       x@file.trophic.link[this.pred] <- this.file
                       x@kept.prey[[this.pred]] <- 
@@ -311,30 +308,73 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
                         c(x@filtered.prey[[this.pred]], this.prey.reason)
                       
                     }
+                    x@summary.prey <- 
+                      x@summary.prey %>% 
+                      filter(Code != this.code,
+                             Prey_Code != this.code)
+                    x@metaweb.filtered <- 
+                      x@metaweb.filtered %>% 
+                      filter(Pred_Code_new != this.code,
+                             Prey_Code_new != this.code)
                   }
-                  x@summary.prey <- 
-                    x@summary.prey %>% 
-                    filter(Code != this.code,
-                           Prey_Code != this.code)
-                  x@metaweb.filtered <- 
-                    x@metaweb.filtered %>% 
-                    filter(Pred_Code_new != this.code,
-                           Prey_Code_new != this.code)
                   x@checklist.filtered <- 
                     x@checklist.filtered %>% 
                     filter(Code != this.code)
-                  
                   x@kept.species <- x@kept.species[x@kept.species != this.species]
                   
                   x@filtered.species <- c(x@filtered.species, this.reason)
                   cli_progress_done()
                 }
-                cli_alert_success("{nrow(summary.occurrence$SpeciesName)} species removed")
-                
+                cli_alert_success("{nrow(summary.occurrence)} species removed")
               }
-              
+            } else {
+              cli_alert_success("No species filtering")
             }
+            x
+          })
+
+### subsample  ------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("subsample", def = function(x, ...) {
+  standardGeneric("subsample") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+setMethod('subsample', signature(x = 'trophic_dataset'),
+          function(x,
+                   subsample.min.prevalence,
+                   subsample.max.absence) {
             # browser()
+            ### Argument check and setup --------------------------------------
+            args <- .filter_dataset.check.args(
+              type = "subsample",
+              subsample.min.prevalence = subsample.min.prevalence,
+              subsample.max.absence = subsample.max.absence)
+            
+            for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
+            
+            # setup param
+            x@param$param.filter$subsample.min.prevalence <- subsample.min.prevalence
+            x@param$param.filter$subsample.max.absence <- subsample.max.absence
+            
+            # setup dir
+            project.name <- x@project.name
+            folder.names <- set_folder(project.name)
+            for (argi in names(folder.names)) { assign(x = argi, value = folder.names[[argi]]) }
+            
+            # code-name converter
+            listcode.full <- checklist$Code
+            names(listcode.full) <- checklist$SpeciesName
+            listname.full <- checklist$SpeciesName
+            names(listname.full) <- checklist$Code
             
             ### Subsampling ----------------------------------------------------
             if (subsample.min.prevalence > 0 ||
@@ -346,16 +386,60 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
                 mutate(prevalence = presence/(presence+absence)) %>% 
                 filter(prevalence < subsample.min.prevalence |
                          absence > subsample.max.absence)
-              if (nrow(summary.occurrence) == 0){
+              if (nrow(summary.occurrence) == 0) {
                 cli_alert_success("No species require subsampling")
               } else {
-                for(this.species in summary.occurrence$SpeciesName){
+                for (this.species in summary.occurrence$SpeciesName) {
                   cli_progress_step(this.species)
                 }
               }
               cli_alert_success("All species subsampled")
             }
+            x
+          })
+
+### filter_prey  ------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("filter_prey", def = function(x, ...) {
+  standardGeneric("filter_prey") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+setMethod('filter_prey', signature(x = 'trophic_dataset'),
+          function(x,
+                   min.prevalence.prey,
+                   min.absence.prey) {
             # browser()
+            ### Argument check and setup --------------------------------------
+            cli_h2("Parameter check")
+            args <- .filter_dataset.check.args(
+              type = "filter_prey",
+              min.prevalence.prey = min.prevalence.prey,
+              min.absence.prey = min.absence.prey)
+            
+            for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
+            
+            x@param$param.filter$min.prevalence.prey <- min.prevalence.prey
+            x@param$param.filter$min.absence.prey <- min.absence.prey
+            
+            # setup dir
+            project.name <- x@project.name
+            folder.names <- set_folder(project.name)
+            for (argi in names(folder.names)) { assign(x = argi, value = folder.names[[argi]]) }
+            
+            # code-name converter
+            listcode.full <- checklist$Code
+            names(listcode.full) <- checklist$SpeciesName
+            listname.full <- checklist$SpeciesName
+            names(listname.full) <- checklist$Code
             
             ### Filtering Prey -------------------------------------------------
             if (min.prevalence.prey > 0 || min.absence.prey > 0) {
@@ -365,7 +449,7 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
               summary.prey.rm <- 
                 x@summary.prey %>% 
                 filter(prevalence_pred1 < min.prevalence.prey |
-                       absence < min.absence.prey)
+                         absence < min.absence.prey)
               
               if (nrow(summary.prey.rm) == 0) {
                 cli_alert_success("No predator-prey interactions to remove")
@@ -382,12 +466,12 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
                     x@summary.predator$nprey[this.index] <- 
                       x@summary.predator$nprey[this.index] - 1
                   }
-                  this.file <- paste0(dataset.dir,this.code,".csv.gz")
+                  this.file <- paste0(dataset.dir,listcode.full[this.pred],".csv.gz")
                   fwrite(this.trophic, file = this.file)  
                   x@file.trophic.link[this.pred] <- this.file
                   x@kept.prey[[this.pred]] <- 
                     x@kept.prey[[this.pred]][
-                      ! x@kept.prey[[this.pred]]  %in% prey.to.rm
+                      !x@kept.prey[[this.pred]]  %in% prey.to.rm
                     ]
                   this.prey.reason <- rep("Low prey prevalence in pred. range or low prey absence count",
                                           length(prey.to.rm))
@@ -407,68 +491,95 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
                            Prey_Code_new %in% x@summary.prey$Prey_Code)
                 cli_alert_success("{nrow(summary.prey.rm)} predator-prey interactions successfully removed")
               }
+            } else {
+              cli_alert_success("No prey filtering")
             }
             x
           })
 
-
 #### Argument Check -----------------------------------
 
-.filter_dataset.check.args <- function(min.presence,
+.filter_dataset.check.args <- function(type,
+                                       min.presence,
                                        min.absence,
                                        subsample.min.prevalence,
                                        subsample.max.absence,
                                        min.prevalence.prey,
                                        min.absence.prey){
-  ##### min.presence ------------------------------------------------
-  if (missing(min.presence)) {
-    min.presence <- 25
-    cli_alert_info("Set default min.presence = 25")
+  
+  # Type
+  if (missing(type)) {
+    type <- "all"
   } else {
-    .fun_testIfPosInt(min.presence)
+    .fun_testIfIn(type, c("all",
+                          "filter_species",
+                          "filter_prey",
+                          "subsample"))
   }
   
-  ##### min.absence ------------------------------------------------
-  if (missing(min.absence)) {
-    min.absence <- 25
-    cli_alert_info("Set default min.absence = 25")
-  } else {
-    .fun_testIfPosInt(min.absence)
-  }
   
-  ##### subsample.min.prevalence ------------------------------------------------
-  if (missing(subsample.min.prevalence)) {
-    subsample.min.prevalence <- 0
-  } else {
-    .fun_testIfPosNum(subsample.min.prevalence)
-  }
-  
-  ##### subsample.max.absence ------------------------------------------------
-  if (missing(subsample.max.absence)) {
-    subsample.max.absence <- Inf
-  } else {
-    if( is.finite(subsample.max.absence) ){
-      .fun_testIfPosInt(subsample.max.absence)
-    } else if (!is.numeric(subsample.max.absence) ||
-               subsample.max.absence < 0) {
-      stop("subsample.max.absence must be a positive integer")
+  ##### filter_species ------------------------------------------------
+  if (type %in% c("filter_species", "all")) {
+    
+    if (missing(min.presence)) {
+      min.presence <- 25
+      cli_alert_info("Set default min.presence = 25")
+    } else {
+      .fun_testIfPosInt(min.presence)
     }
-  }
-  
-  ##### min.prevalence.prey ------------------------------------------------
-  if (missing(min.prevalence.prey)) {
-    min.prevalence.prey <- 0
+    
+    if (missing(min.absence)) {
+      min.absence <- 25
+      cli_alert_info("Set default min.absence = 25")
+    } else {
+      .fun_testIfPosInt(min.absence)
+    }
   } else {
-    .fun_testIfPosNum(min.prevalence.prey)
+    min.absence <- NA
+    min.presence <- NA
   }
   
-  ##### min.absence.prey ------------------------------------------------
-  if (missing(min.absence.prey)) {
-    min.absence.prey <- 0
+  
+  ##### subsample ------------------------------------------------
+  if (type %in% c("subsample", "all")) {
+    if (missing(subsample.min.prevalence)) {
+      subsample.min.prevalence <- 0
+    } else {
+      .fun_testIfPosNum(subsample.min.prevalence)
+    }
+    
+    if (missing(subsample.max.absence)) {
+      subsample.max.absence <- Inf
+    } else {
+      if (is.finite(subsample.max.absence)) {
+        .fun_testIfPosInt(subsample.max.absence)
+      } else if (!is.numeric(subsample.max.absence) ||
+                 subsample.max.absence < 0) {
+        stop("subsample.max.absence must be a positive integer")
+      }
+    }
   } else {
-    .fun_testIfPosInt(min.absence.prey)
+    subsample.max.absence <- NA
+    subsample.min.prevalence <- NA
   }
   
+  ##### filter_prey ------------------------------------------------
+  if (type %in% c("filter_prey", "all")) {
+    if (missing(min.prevalence.prey)) {
+      min.prevalence.prey <- 0
+    } else {
+      .fun_testIfPosNum(min.prevalence.prey)
+    }
+    
+    if (missing(min.absence.prey)) {
+      min.absence.prey <- 0
+    } else {
+      .fun_testIfPosInt(min.absence.prey)
+    }
+  } else {
+    min.absence.prey <- NA
+    min.prevalence.prey <- NA
+  }
   return(list(min.presence = min.presence,
               min.absence = min.absence,
               subsample.min.prevalence = subsample.min.prevalence,
@@ -476,3 +587,208 @@ setMethod('filter_dataset', signature(x = 'trophic_dataset'),
               min.prevalence.prey = min.prevalence.prey,
               min.absence.prey = min.absence.prey))
 }
+
+
+### load_data.trophic_dataset    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("load_data", def = function(x, ...) {
+  standardGeneric("load_data") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+##' @param SpeciesName a \code{character}, a species name to retrieve data or 
+##' information
+##' @param Code a \code{character}, a species code to retrieve data or information
+##' @param type a \code{character}, the type of data to retrieve: trophic, trophic.raw
+##' occurrence
+
+setMethod('load_data', signature(x = 'trophic_dataset'),
+          function(x,
+                   SpeciesName,
+                   Code, 
+                   type = "trophic") {
+            SpeciesName <- .load_data.check.args(x = x,
+                                                 SpeciesName = SpeciesName,
+                                                 Code = Code,
+                                                 type = type)
+            if (type == "trophic") {
+              df <- fread(x@file.trophic.link[SpeciesName])
+            } else if (type == "trophic.raw") {
+              df <- fread(x@param.raw$file.trophic.raw.link[SpeciesName])
+            } else if (type == "occurrence") {
+              df <- fread(x@file.occurrence.link[SpeciesName])
+            }
+            df
+          })
+
+
+
+### load data argument check --------------------------------------------------
+.load_data.check.args <- function(x, SpeciesName, Code, type){
+  
+  if (missing(type)) {
+    type <- "trophic"
+    cli_alert_info('Retrieving trophic dataset')
+  }
+  
+  .fun_testIfIn(type, c("trophic","occurrence","trophic.raw"))
+  if (type == "trophic") {
+    summary.occ <- x@summary.predator
+  } else if (type == "trophic.raw") {
+    summary.occ <- x@param.raw$summary.predator.raw
+  } else if (type == "occurrence") {
+    summary.occ <- x@summary.occurrence
+  }
+  
+  if (!xor(missing(SpeciesName),missing(Code))) {
+    stop("Exactly one of SpeciesName or Code must be given as argument")
+  }
+  
+  
+  
+  if (!missing(Code)) {
+    listname <- summary.occ$SpeciesName
+    names(listname) <- summary.occ$Code
+    if (!Code %in% summary.occ$Code) {
+      stop(paste0("dataset for ", Code, " not found"))
+    }
+    SpeciesName <- listname[Code]
+  } 
+  
+  if (!missing(SpeciesName)) {
+    if (!SpeciesName %in% summary.occ$SpeciesName) {
+      stop(paste0("dataset for ", SpeciesName, " not found"))
+    }
+  }
+  return(SpeciesName)
+}
+
+
+### reset    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("reset", def = function(x, ...) {
+  standardGeneric("reset") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_progress_step cli_progress_done
+##' 
+setMethod('reset', signature(x = 'trophic_dataset'),
+          function(x) {
+            
+            cli_progress_step("Reset trophic dataset")
+            
+            folder.names <- set_folder(x@project.name)
+            for (argi in names(folder.names)) { 
+              assign(x = argi, value = folder.names[[argi]]) 
+            }
+            
+            x@summary.occurrence <- x@param.raw$summary.occurrence.raw
+            x@summary.predator <- x@param.raw$summary.predator.raw
+            x@summary.prey <- x@param.raw$summary.prey.raw
+            x@metaweb.filtered <- x@param.raw$metaweb
+            x@checklist.filtered <- x@param.raw$checklist
+            x@kept.species <- x@param.raw$kept.species.raw
+            x@filtered.species <- x@param.raw$filtered.species.raw
+            x@kept.prey <- x@param.raw$kept.prey.raw
+            x@filtered.prey <- x@param.raw$filtered.prey.raw
+            # reset files
+            file.remove(list.files(dataset.dir, full.names = TRUE))
+            x@file.trophic.link <- x@param.raw$file.trophic.raw.link
+            x@metaweb.filtered <- 
+              x@metaweb.filtered %>% 
+              filter(Pred_Code_new %in% x@summary.prey$Code &
+                       Prey_Code_new %in% x@summary.prey$Prey_Code)
+            
+            x@checklist.filtered <- 
+              x@checklist.filtered %>% 
+              filter(Code %in% x@summary.occurrence$Code)
+            cli_progress_done()
+            x
+          })
+
+
+
+### load_data.trophic_dataset    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("summary_trophic", def = function(x, ...) {
+  standardGeneric("summary_trophic") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+##' @param info the type of info return
+setMethod('summary_trophic', signature(x = 'trophic_dataset'),
+          function(x,
+                   info = "trophic_dataset") {
+            
+            possible_info <- c("summary.occurrence",
+                               "summary.predator",
+                               "summary.prey",
+                               "metaweb",
+                               "checklist",
+                               "kept.species",
+                               "kept.prey",
+                               "filtered.species",
+                               "filtered.prey")
+            .fun_testIfIn(info, possible_info)
+            
+            if (info == "summary.occurrence") {
+              return(x@summary.occurrence)
+            } else if (info == "summary.predator") {
+              return(x@summary.predator)
+            } else if (info == "summary.prey") {
+              return(x@summary.prey)
+            } else if (info == "metaweb") {
+              return(x@metaweb.filtered)
+            } else if (info == "checklist") {
+              return(x@checklist.filtered)
+            } else if (info == "filtered.species") {
+              
+              tmp <- x@filtered.species
+              output <- data.frame(SpeciesName = names(tmp),
+                                   reason = tmp)
+              return(output)
+              
+            } else if (info == "filtered.prey") {
+              tmp.prey <- x@filtered.prey
+              output <- foreach(this.species = names(tmp.prey), .combine = 'rbind') %do% {
+                tmp <- tmp.prey[[this.species]]
+                if (length(tmp) == 0) {
+                  return(NULL)
+                }
+                data.frame(Pred_Name = this.species,
+                           Prey_Name = names(tmp),
+                           reason = unname(tmp))
+              }            
+              return(output)
+            } else if (info == "kept.species") {
+              return(x@kept.species)
+              return(output)
+            } else if (info == "kept.prey") {
+              return(x@kept.prey)
+            }
+          })
+
