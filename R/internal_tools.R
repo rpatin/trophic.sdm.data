@@ -693,3 +693,28 @@ get_prey_summary <- function(this.trophic){
   prey.summary
 }
   
+## set_folder  ----------------------------
+##' @name set_folder
+##' 
+##' @title Set folder for prepare_dataset
+##' 
+##' @description Initialize and set folder name for \code{\link{prepare_dataset_gbif}}
+##' and \code{\link{prepare_dataset_iucn}}
+##' @inheritParams trophic_dataset
+##' @return a named list
+##' @export
+
+set_folder <- function(project.name){
+  dataset.dir <- paste0(project.name, "/trophic_dataset/")
+  if (!dir.exists(dataset.dir)) dir.create(dataset.dir, recursive = TRUE, showWarnings = FALSE)
+  raw.dir <- paste0(project.name, "/trophic_dataset_raw/")
+  if (!dir.exists(raw.dir)) dir.create(raw.dir, recursive = TRUE, showWarnings = FALSE)
+  occurrence.dir <- paste0(project.name, "/occurrence_dataset/")
+  if (!dir.exists(occurrence.dir)) dir.create(occurrence.dir, recursive = TRUE, showWarnings = FALSE)
+  return(list(
+    "dataset.dir" = dataset.dir,
+    "raw.dir" = raw.dir,
+    "occurrence.dir" = occurrence.dir
+  ))
+}
+
