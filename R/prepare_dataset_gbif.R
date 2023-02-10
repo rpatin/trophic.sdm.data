@@ -44,13 +44,8 @@ prepare_dataset_gbif <- function(checklist,
   for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
   
   ## initialize folder -----------------------------------------------------
-  
-  dataset.dir <- paste0(project.name, "/trophic_dataset/")
-  if (!dir.exists(dataset.dir)) dir.create(dataset.dir, recursive = TRUE, showWarnings = FALSE)
-  raw.dir <- paste0(project.name, "/trophic_dataset_raw/")
-  if (!dir.exists(raw.dir)) dir.create(raw.dir, recursive = TRUE, showWarnings = FALSE)
-  occurrence.dir <- paste0(project.name, "/occurrence_dataset/")
-  if (!dir.exists(occurrence.dir)) dir.create(occurrence.dir, recursive = TRUE, showWarnings = FALSE)
+  folder.names <- set_folder(project.name)
+  for (argi in names(folder.names)) { assign(x = argi, value = folder.names[[argi]]) }
   
   has.cluster <- .register_cluster(nb.cpu = nb.cpu)
   
@@ -97,6 +92,10 @@ prepare_dataset_gbif <- function(checklist,
     } else if (nrow(this.output) < min.gbif) {
       # less than min.gbif data
       this.reason <- paste0("less than ", min.gbif, " occurrence")
+    } else if (first(this.output$distance_to_iucn) != "No distribution found" &&
+               all(this.output$distance_to_iucn > 
+                   buffer.iucn[[species.buffer[[this.species]]]]*1000)) {
+      this.reason <- paste0("no occurrences within IUCN range")
     } else {
       # more than min.gbif data
       this.occurrence <- paste0(occurrence.dir, this.code, ".csv")
@@ -260,7 +259,7 @@ prepare_dataset_gbif <- function(checklist,
   } # end foreach Step 1
   
   occurrence.summary <- lapply(species.occurrence, function(x){
-    if(inherits(x$occurrence.summary, "data.frame")){
+    if (inherits(x$occurrence.summary, "data.frame")) {
       return(x$occurrence.summary)
     } else {
       return(NULL)
@@ -279,6 +278,7 @@ prepare_dataset_gbif <- function(checklist,
                 return(NULL)
               }
             })) 
+  if (is.null(filtered.species)) filtered.species <- character()
   
   file.occurrence.link <- 
     do.call('c', 
@@ -301,8 +301,8 @@ prepare_dataset_gbif <- function(checklist,
   listcode <- occurrence.summary$Code
   names(listcode) <- occurrence.summary$SpeciesName
   
-  this.species = names(listcode)[9]
-  
+  # this.species = names(listcode)[1]
+  # browser()
   species.trophic.list <- foreach(this.species = names(listcode)) %dopar% {
     cli_progress_step(this.species)
     this.code <- listcode[this.species]
@@ -313,7 +313,7 @@ prepare_dataset_gbif <- function(checklist,
         metaweb %>% 
         filter(Pred_Code_new == this.code,
                Prey_Code_new %in% listcode,
-               Co_occur,
+               Co_occur >= 1,
                Score_DD == 2,
                Stage == "adults")
       
@@ -378,7 +378,7 @@ prepare_dataset_gbif <- function(checklist,
       this.metaweb.full <- 
         metaweb %>% 
         filter(Pred_Code_new == this.code,
-               Co_occur,
+               Co_occur >= 1,
                Score_DD == 2,
                Stage == "adults")
       
@@ -461,31 +461,48 @@ prepare_dataset_gbif <- function(checklist,
   output@summary.predator <- summary.predator
   output@summary.prey <- summary.prey
   output@file.occurrence.link <- file.occurrence.link
-  output@file.trophic.raw.link <- file.trophic.raw.link
   output@file.trophic.link <- file.trophic.link
-  output@metaweb <- metaweb
   output@metaweb.filtered <- metaweb.filtered
-  output@checklist <- checklist
   output@checklist.filtered <- checklist.filtered
   output@kept.species <- kept.species
   output@filtered.species <- filtered.species
   output@kept.prey <- kept.prey
   output@filtered.prey <- filtered.prey
+  output@param.raw <- 
+    list(
+      "summary.occurrence.raw" = occurrence.summary,
+      "summary.predator.raw" = summary.predator,
+      "summary.prey.raw" = summary.prey,
+      "file.trophic.raw.link" = file.trophic.link,
+      "metaweb" = metaweb,
+      "checklist" = checklist,
+      "kept.species.raw" = kept.species,
+      "filtered.species.raw" = filtered.species,
+      "kept.prey.raw" = kept.prey,
+      "filtered.prey.raw" = filtered.prey 
+    )
   output@param <- param
   output@datatype <- 'gbif'
   output@project.name <- project.name
   output@sampling.effort <- sampling.effort
   output@data.mask <- data.mask
+  
   ## Subsample & Filter output ------------------------------------------------
   cli_h1("Filtering & Subsampling dataset")
-  
-  output <- filter_dataset(output,
+  cli_progress_step("Filter Species")
+  output <- filter_species(output,
                            min.presence = param.filter$min.presence,
-                           min.absence = param.filter$min.absence,
-                           subsample.min.prevalence = param.filter$subsample.min.prevalence,
-                           subsample.max.absence = param.filter$subsample.max.absence,
-                           min.prevalence.prey = param.filter$min.prevalence.prey,
-                           min.absence.prey = param.filter$min.absence.prey)
+                           min.absence = param.filter$min.absence)
+  
+  cli_progress_step("Subsample dataset")
+  output <- subsample(output,
+                      subsample.min.prevalence = param.filter$subsample.min.prevalence,
+                      subsample.max.absence = param.filter$subsample.max.absence)
+  
+  cli_progress_step("Filter Prey")
+  output <- filter_prey(output,
+                        min.prevalence.prey = param.filter$min.prevalence.prey,
+                        min.absence.prey = param.filter$min.absence.prey)
   output
 } 
 
@@ -513,21 +530,26 @@ prepare_dataset_gbif <- function(checklist,
   .check_checklist(checklist)
   #### metaweb --------------------------------------------------------------- 
   .check_metaweb(metaweb)
-  #### folder.gbif -----------------------------------------------------------
+  
+  # compatibility between checklist and metaweb
+  .check_metaweb_checklist(metaweb, checklist)
+
+  #### Folder, mask and sampling effort ---------------------------------------
+  #### folder.gbif
   .fun_testIfInherits(folder.gbif, "character")
   .fun_testIfDirExists(folder.gbif)
-  #### folder.iucn.buffer -----------------------------------------------------------
+  #### folder.iucn.buffer
   .fun_testIfInherits(folder.iucn.buffer, "character")
   .fun_testIfDirExists(folder.iucn.buffer)
-  #### sampling.effort ------------------------------------------------------- 
+  #### sampling.effort
   .fun_testIfInherits(sampling.effort,"sampling_effort")
-  #### data.mask -------------------------------------------------------------
+  #### data.mask
   .fun_testIfInherits(data.mask, "SpatRaster")
-  #### project.name ----------------------------------------------------------
+  #### project.name
   .fun_testIfInherits(project.name, "character")
   if (!dir.exists(project.name)) dir.create(project.name, recursive = TRUE)
   
-  #### min.gbif --------------------------------------------------------------
+  #### min.gbif
   if (missing(min.gbif)) {
     min.gbif <- 25
     cli_alert_info("Set default min.gbif = 25")
@@ -554,9 +576,9 @@ prepare_dataset_gbif <- function(checklist,
       for (level_to_check in c("SpeciesName",
                                "Family",
                                "Order",
-                               "Class")){
+                               "Class")) {
         this.check <- sapply(buffer.name,  function(x) x == checklist.sub[ , level_to_check])
-        if (any(this.check)){
+        if (any(this.check)) {
           return(buffer.name[which(this.check)]) 
         }
       }
@@ -581,12 +603,12 @@ prepare_dataset_gbif <- function(checklist,
   } 
   
   # 1-length numeric
-  if(is.numeric(quantile.absence.certain)){
-    if( length(quantile.absence.certain) > 1) {
+  if (is.numeric(quantile.absence.certain)) {
+    if ( length(quantile.absence.certain) > 1) {
       stop("quantile.absence.certain must have a length of 1")
     }
-    if( quantile.absence.certain < 0 ||
-        quantile.absence.certain > 1) {
+    if ( quantile.absence.certain < 0 ||
+         quantile.absence.certain > 1) {
       stop("quantile.absence.certain must be included between 0 and 1")
     }
     cli_alert_info("quantile.absence.certain set to {quantile.absence.certain}\\
@@ -612,9 +634,9 @@ prepare_dataset_gbif <- function(checklist,
     for (level_to_check in c("SpeciesName",
                              "Family",
                              "Order",
-                             "Class")){
+                             "Class")) {
       this.check <- sapply(quantile.name,  function(x) x == checklist.sub[ , level_to_check])
-      if (any(this.check)){
+      if (any(this.check)) {
         return(quantile.name[which(this.check)]) 
       }
     }
@@ -642,14 +664,14 @@ prepare_dataset_gbif <- function(checklist,
     cli_alert_info("Fixed uncertain.value to default 0")
     uncertain.value <- 0
   }
-  if( length(uncertain.value) != 1 ||
-      !(uncertain.value %in% c(0,1))) {
+  if ( length(uncertain.value) != 1 ||
+       !(uncertain.value %in% c(0,1))) {
     stop("uncertain.value must be 0 or 1")
   }
   #### nb.cpu -------------------------------------------------------  
   .fun_testIfPosInt(nb.cpu)
   #### param.filter (...) ----------------------------------------------------------
-  param.filter <- .filter_dataset.check.args(...)
+  param.filter <- .filter_dataset.check.args(type = "all", ...)
   
   return(list(
     "checklist" = checklist, 
