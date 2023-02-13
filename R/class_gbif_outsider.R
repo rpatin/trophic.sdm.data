@@ -105,16 +105,16 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
                   "results" = this.output))
     } else {
       total.gbif <- nrow(this.output)
-      if (first(this.output$distance_to_iucn) == "No distribution found") {
+      species.iucn <-
+        locate_iucn_distribution(species.code = listcode[this.species],
+                                 folder.iucn = folder.iucn)
+      if (first(this.output$distance_to_iucn) == "No distribution found" ||
+          is.null(species.iucn)) {
         this.output <- 
           mutate(this.output, distance_to_iucn = 0)
-        species.iucn <- NULL
       } else {
         this.output <- 
           mutate(this.output, distance_to_iucn = as.numeric(distance_to_iucn))
-        species.iucn <-
-          locate_iucn_distribution(species.code = listcode[this.species],
-                                   folder.iucn = folder.iucn)
       }
       this.output <- 
         filter(this.output, distance_to_iucn > 0)
@@ -134,7 +134,7 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   cli_h2("Extract summary")
   cli_progress_step("Failed Species")
   failed.df <- lapply(output.outsider, function(x){
-    if (x$status == "failed"){
+    if (x$status == "failed") {
       return(data.frame(species = x$species, results = x$results))
     }
     NULL
@@ -145,7 +145,7 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   cli_progress_step("Successfull species")
   success.df <- lapply(output.outsider, function(x){
-    if (x$status == "success"){
+    if (x$status == "success") {
       return(x$results)
     }
     NULL
@@ -154,8 +154,8 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   cli_progress_step("Link to IUCN files")
   iucn.list <- lapply(output.outsider, function(x){
-    if (x$status == "success"){
-      if(length(x$species.iucn) > 1){
+    if (x$status == "success" ) {
+      if (length(x$species.iucn) > 1) {
         x$species.iucn <- "multiple files"
       } 
       return(x$species.iucn)
@@ -166,7 +166,7 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   cli_progress_step("Summary for successfull species")
   summary.df <- lapply(output.outsider, function(x){
-    if (x$status == "success"){
+    if (x$status == "success") {
       return(data.frame("species" = x$species,
                         "outside.iucn" = nrow(x$results),
                         "total.gbif" = x$total.gbif))
@@ -177,10 +177,13 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   summary2.df <- success.df %>%
     group_by(species) %>%
     summarise(mean = round(mean(distance_to_iucn)),
-              median = round(mean(distance_to_iucn)),
+              median = round(median(distance_to_iucn)),
               q5 = round(quantile(distance_to_iucn, probs = 0.05)),
               q25 = round(quantile(distance_to_iucn, probs = 0.25)),
               q75 = round(quantile(distance_to_iucn, probs = 0.75)),
+              q80 = round(quantile(distance_to_iucn, probs = 0.80)),
+              q85 = round(quantile(distance_to_iucn, probs = 0.85)),
+              q90 = round(quantile(distance_to_iucn, probs = 0.90)),
               q95 = round(quantile(distance_to_iucn, probs = 0.95)))
   
   output.summary <- 
@@ -219,6 +222,17 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   
   .write_logfile(iucn.failed.df, logfile = "failed.iucn.csv", project.name = project.name)
   .write_logfile(output.failed, logfile = "failed.gbif.csv", project.name = project.name)
+  
+  # reproject output --------------------------------------------------------
+  
+  this.X <- output.success$X
+  this.Y <- output.success$Y
+  
+  this.projected <- project(cbind(this.X, this.Y),
+                            from = crs("EPSG:4326"), to = crs("EPSG:3035"))
+  
+  output.success$X <- this.projected[,1]
+  output.success$Y <- this.projected[,2]
   
   ## Output ------------------------------------------------------------
   
@@ -261,7 +275,7 @@ setMethod('show', signature('gbif_outsider'),
             goodspecies <- 
               nrow(object@checklist) - 
               nrow(object@data.summary) - 
-              nrow(object@species.failed)
+              nrow(object@gbif.failed)
             median.dist <- median(object@outsider$distance_to_iucn)
             median.prop <- median(object@data.summary$outside.iucn /
                                     object@data.summary$total.gbif)
@@ -270,8 +284,10 @@ setMethod('show', signature('gbif_outsider'),
                 " species with gbif data outside IUCN ranges")
             cat("\n", goodspecies, 
                 " species for which all gbif data were inside IUCN ranges (or without IUCN ranges")
-            cat("\n", nrow(object@species.failed), 
+            cat("\n", nrow(object@gbif.failed), 
                 " species for which gbif data could not be retrieved")
+            cat("\n", nrow(object@iucn.failed), 
+                " species for which iucn data could not be retrieved")
             cat("\n", "Median distance to IUCN ranges across all data:",
                 round(median.dist),"m")
             cat("\n", "Median proportion of points outside IUCN ranges across species:",
@@ -279,7 +295,7 @@ setMethod('show', signature('gbif_outsider'),
             invisible(NULL)
           })
 
-### summary.gbif_outsider    --------------------------------------------------
+### summary_outsider    --------------------------------------------------
 ##' 
 ##' @rdname gbif_outsider
 ##' @inheritParams taxonomic_conflict
@@ -293,22 +309,25 @@ summary_outsider <- function(object, type = "Class") {
   .fun_testIfIn(type, c("Class","Order","Family","Species"))
   .fun_testIfInherits(object, "gbif_outsider")
   
-  if(type == "Species"){
+  if (type == "Species") {
     return(object@data.summary)
   }
-  
-  object.summary <- object@outsider  %>% 
-    group_by(Class, Order, Family, Code) %>% 
-    summarise(median = median(distance_to_iucn),
-              .groups = "drop") %>% 
+
+  object.summary <-
+    object@data.summary  %>% 
+    filter(outside.iucn > 0) %>% 
     group_by(across(type)) %>% 
     summarise(
-      q5 = quantile(median, probs = 0.05),
-      q25 = quantile(median, probs = 0.25),
-      q75 = quantile(median, probs = 0.75),
-      q95 = quantile(median, probs = 0.95),
+      q5 = median(q5),
+      q25 = median(q25),
       median = median(median),
-      .groups = "drop")
+      q75 = median(q75),
+      q80 = median(q80),
+      q85 = median(q85),
+      q90 = median(q90),
+      q95 = median(q95),
+      .groups = "drop") 
+  
   if (type == "Order") {
     object.summary <- object@outsider %>% 
       group_by(Class, Order) %>% 
@@ -318,7 +337,7 @@ summary_outsider <- function(object, type = "Class") {
       right_join(object.summary, by = "Order") %>% 
       arrange(Class, Order)
   }
-  if(type == "Family"){
+  if (type == "Family") {
     object.summary <- object@outsider %>% 
       group_by(Class, Order, Family) %>% 
       summarise(Code = first(Code),
@@ -404,16 +423,40 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
             } 
             # Species specifc maps plot
             dir.create(plot.folder, recursive = TRUE, showWarnings = FALSE)
-            x.summary %>% 
+            class.list <- unique(x@checklist$Class)
+            folder.list <- c("0 to 25",
+                             "25 to 75", 
+                             "75 to 100")
+            for (this.class in class.list) {
+              for (this.folder in folder.list) {
+                dir.create(paste0(plot.folder,'/',this.class,'/',this.folder),
+                           recursive = TRUE, showWarnings = FALSE)
+              }
+            }
+            x.summary <- 
+              x.summary %>% 
               filter(outside.iucn > 0)
+            
             listname <- x.summary$species
             names(listname) <- x.summary$Code
             out.list <- foreach( thiscode = names(listname) ) %dopar% {
-              cli::cli_progress_step(listname[thiscode])
-              path.file <- paste0(plot.folder, "/", thiscode,".png")
+              cli_progress_step(listname[thiscode])
               df <- x@outsider %>% 
                 filter(Code == thiscode)
               this.summary <- filter(x.summary, Code == thiscode)
+              
+              path.file <- 
+                paste0(
+                  plot.folder, '/',
+                  this.summary$Class, '/',
+                  ifelse(this.summary$prop.outside < 25,
+                                    folder.list[1],
+                                    ifelse(this.summary$prop.outside < 75,
+                                           folder.list[2],
+                                           folder.list[3])), '/',
+                  thiscode, '.png'
+                )
+              
               this.iucn <- x@iucn.distrib[[thiscode]]
               g <- ggplot()
               if (!is.null(this.iucn) && 
@@ -423,16 +466,12 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                   g <- ggplot(df) +
                     geom_spatraster(
                       data = mutate(this.distrib, 
-                                    presence = factor(presence))
+                                    layer = factor(layer))
                     ) +
                     scale_fill_manual(
                       "IUCN distribution",
-                      values = c("#d95f02",
-                                          "#7570b3",
-                                          "#1b9e77",
-                                          "#e7298a",
-                                          "#66a61e"),
-                                          na.value = "grey")
+                      values = c("#d95f02", "#7570b3"),
+                      na.value = "grey")
                 }, type = "message")
               }
               if (nrow(df) > 0) {
@@ -453,6 +492,7 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
               )
               save_plot(filename = path.file,
                         g, base_height = 20/cm(1), base_width = 30/cm(1))
+              cli_progress_done()
               return(NULL)
             }
             invisible(NULL)
