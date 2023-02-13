@@ -328,6 +328,7 @@ rasterize_iucn <- function(checklist,
 ##' @param folder.iucn.raster a path to a folder with all IUCN range as raster.
 ##' used to determine which species have a IUCN range.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
+##' @return a named list with the buffer associated to each species
 
 buffer_iucn <- function(checklist, 
                         folder.iucn,
@@ -394,7 +395,8 @@ buffer_iucn <- function(checklist,
                          ") failed. Reason: no IUCN range found"),
         logfile = logfile_failed,
         project.name = project.name,
-        open = "a")
+        open = "a",
+        silent = TRUE)
     }
     read.try <- try({
       this.poly <- vect(this.file)
@@ -438,7 +440,7 @@ buffer_iucn <- function(checklist,
     NULL
   }
   if (has.cluster) doParallel::stopImplicitCluster()
-  invisible(NULL)
+  species.buffer
 }
 
 ### Argument Check -----------------------------------
