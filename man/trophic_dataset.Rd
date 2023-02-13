@@ -16,6 +16,8 @@
 \alias{load_data,trophic_dataset-method}
 \alias{reset}
 \alias{reset,trophic_dataset-method}
+\alias{summary_trophic}
+\alias{summary_trophic,trophic_dataset-method}
 \alias{prepare_dataset_gbif}
 \title{Dataset for running trophic SDM}
 \usage{
@@ -35,11 +37,15 @@ filter_prey(x, ...)
 
 load_data(x, ...)
 
-\S4method{load_data}{trophic_dataset}(x, SpeciesName, Code)
+\S4method{load_data}{trophic_dataset}(x, SpeciesName, Code, type = "trophic")
 
 reset(x, ...)
 
 \S4method{reset}{trophic_dataset}(x)
+
+summary_trophic(x, ...)
+
+\S4method{summary_trophic}{trophic_dataset}(x, info = "trophic_dataset")
 
 prepare_dataset_gbif(
   checklist,
@@ -94,6 +100,11 @@ prey less absence than \code{min.absence.prey} is removed from the predator
 information}
 
 \item{Code}{a \code{character}, a species code to retrieve data or information}
+
+\item{type}{a \code{character}, the type of data to retrieve: trophic, trophic.raw
+occurrence}
+
+\item{info}{the type of info return}
 
 \item{checklist}{a \code{data.frame} with information on all species of interest}
 
