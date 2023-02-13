@@ -100,7 +100,13 @@ prepare_dataset_gbif <- function(checklist,
       # more than min.gbif data
       this.occurrence <- paste0(occurrence.dir, this.code, ".csv")
       iucn.try <- try({
-        if (first(this.output$distance_to_iucn) == "No distribution found") {
+        this.iucn <-
+          locate_iucn_distribution(species.code = listcode[this.species],
+                                   folder.iucn = folder.iucn.buffer,
+                                   filetype = '.tif')
+        
+        if (first(this.output$distance_to_iucn) == "No distribution found" ||
+            is.null(this.iucn)) {
           this.output <- 
             mutate(this.output, inside_iucn = TRUE)
           this.iucn <- "none"
@@ -114,14 +120,10 @@ prepare_dataset_gbif <- function(checklist,
                    inside_iucn = distance_to_iucn <= this.buffer)
           
           # get IUCN distribution
-          this.iucn <-
-            locate_iucn_distribution(species.code = listcode[this.species],
-                                     folder.iucn = folder.iucn.buffer,
-                                     filetype = '.tif')
           this.iucn.rast <- rast(this.iucn)
         }
       })
-      if (inherits(iucn.try, "try-error")){
+      if (inherits(iucn.try, "try-error")) {
         this.reason <- "Could not retrieve IUCN information"
         this.iucn <- "failed"
       } else {
@@ -217,11 +219,11 @@ prepare_dataset_gbif <- function(checklist,
           n.absences.inside.certain <-
             length(which(this.occurrence.df$presence == 0 &
                            this.occurrence.df$inside_iucn & 
-                           !this.occurrence.df$status == "certain"))
+                           this.occurrence.df$status == "certain"))
           n.absences.inside.uncertain <-
             length(which(this.occurrence.df$presence == 0 &
                            this.occurrence.df$inside_iucn & 
-                           !this.occurrence.df$status == "uncertain"))
+                           this.occurrence.df$status == "uncertain"))
           this.summary <- 
             data.frame("SpeciesName" = this.species,
                        "Code" = this.code,
@@ -291,7 +293,7 @@ prepare_dataset_gbif <- function(checklist,
                 return(y)
               }
             }))
-  # browser()
+
   ## Step 2 - filter presence/absence based on prey community ---------
   cli_h2("Step 2 - Assemble prey dataset")
   
@@ -300,8 +302,8 @@ prepare_dataset_gbif <- function(checklist,
   
   listcode <- occurrence.summary$Code
   names(listcode) <- occurrence.summary$SpeciesName
-  
-  # this.species = names(listcode)[1]
+
+  # this.species = names(listcode)[8]
   # browser()
   species.trophic.list <- foreach(this.species = names(listcode)) %dopar% {
     cli_progress_step(this.species)
@@ -320,7 +322,7 @@ prepare_dataset_gbif <- function(checklist,
       this.occurrence <- fread(file.occurrence.link[this.species])
       this.trophic.file <- paste0(raw.dir, this.code,".csv.gz")
       
-      if(nrow(this.metaweb) == 0){
+      if (nrow(this.metaweb) == 0) {
         ### no prey ---------------------
         this.trophic <- 
           this.occurrence %>% 

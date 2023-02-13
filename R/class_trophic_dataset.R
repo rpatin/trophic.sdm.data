@@ -724,7 +724,7 @@ setMethod('reset', signature(x = 'trophic_dataset'),
 
 
 
-### load_data.trophic_dataset    --------------------------------------------------
+### summary_trophic    --------------------------------------------------
 ##'
 ##' @rdname trophic_dataset
 ##' @param x an object of class \code{trophic_dataset}
@@ -769,7 +769,7 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
               
               tmp <- x@filtered.species
               output <- data.frame(SpeciesName = names(tmp),
-                                   reason = tmp)
+                                   reason = unname(tmp))
               return(output)
               
             } else if (info == "filtered.prey") {
