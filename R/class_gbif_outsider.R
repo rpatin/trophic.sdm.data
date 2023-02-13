@@ -312,7 +312,7 @@ summary_outsider <- function(object, type = "Class") {
   if (type == "Species") {
     return(object@data.summary)
   }
-
+  
   object.summary <-
     object@data.summary  %>% 
     filter(outside.iucn > 0) %>% 
@@ -367,7 +367,8 @@ summary_outsider <- function(object, type = "Class") {
 ##' @importFrom grDevices cm
 
 setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
-          function(x, type = "Class", nb.cpu = 1, plot.folder = "gbif_outsider")
+          function(x, type = "Class", nb.cpu = 1, plot.folder = "gbif_outsider",
+                   buffer.config, species.buffer)
           {
             type.range <- c("Class","Order","Family", "Species")
             .fun_testIfIn(type, type.range)
@@ -450,10 +451,10 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                   plot.folder, '/',
                   this.summary$Class, '/',
                   ifelse(this.summary$prop.outside < 25,
-                                    folder.list[1],
-                                    ifelse(this.summary$prop.outside < 75,
-                                           folder.list[2],
-                                           folder.list[3])), '/',
+                         folder.list[1],
+                         ifelse(this.summary$prop.outside < 75,
+                                folder.list[2],
+                                folder.list[3])), '/',
                   thiscode, '.png'
                 )
               
@@ -475,12 +476,27 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                 }, type = "message")
               }
               if (nrow(df) > 0) {
+                if (missing(species.buffer) | missing(buffer.config)) {
+                  g <- g +
+                    geom_point(data = df,
+                               aes(x = X, y = Y, color = distance_to_iucn), 
+                               shape = 20) 
+
+                } else {
+                  this.buffer <- buffer.config[[listname[this.code]]]
+                  g <- g +
+                    geom_point(data  = filter(df, distance_to_iucn <= this.buffer*1000),
+                               aes(x = X, y = Y),
+                               color = '#1b9e77', shape = 20) +
+                    geom_point(data  = filter(df, distance_to_iucn > this.buffer*1000),
+                               aes(x = X, y = Y, color = distance_to_iucn), 
+                               shape = 20) 
+                  
+                }
                 g <- g +
-                  geom_point(data = df,
-                             aes(x = X, y = Y, color = distance_to_iucn), 
-                             shape = 20) +
                   scale_color_continuous("Distance to IUCN distribution")
-              }
+                
+              } 
               g <- g + ggtitle(
                 paste0(
                   listname[thiscode]," (",
