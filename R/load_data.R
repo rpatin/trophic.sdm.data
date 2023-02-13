@@ -12,6 +12,7 @@
 ##' @export
 ##' @importFrom data.table fread
 ##' @importFrom dplyr select
+##' @importFrom cli cli_alert_warning
 
 load_gbif_data <- function(species.name, folder.gbif){
   .load_gbif_data.check.args(species.name = species.name,
@@ -31,6 +32,22 @@ load_gbif_data <- function(species.name, folder.gbif){
     if (inherits(test.read, "try-error")) {
       return("File could not be read")
     } 
+    
+  if (any(grepl(pattern = "geometry", x = colnames(output)))) {
+      cli_alert_warning("Reprojecting species {species.name}")
+      this.geometry <- output$geometry
+      this.X <- sapply(strsplit(this.geometry, split = "|", fixed = TRUE), 
+                       function(x){ as.numeric(x[1]) })
+      this.Y <- sapply(strsplit(this.geometry, split = "|", fixed = TRUE), 
+                       function(x){ as.numeric(x[2]) })
+      mat.proj <- 
+        project(cbind(this.X,this.Y), from = crs("EPSG:3035"), to = crs("EPSG:4326"))
+      output$geometry <- NULL
+      output$X <- mat.proj[,1]
+      output$Y <- mat.proj[,2]
+      # fwrite(x = output, file = paste0(folder.gbif, selected.files),
+      #        showProgress = FALSE, sep = ";")
+    }
     
     test.colnames <- try({
       .fun_testdfcolnames(output,
