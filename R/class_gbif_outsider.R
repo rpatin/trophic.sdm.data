@@ -375,7 +375,8 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
             .fun_testIfPosInt(nb.cpu)
             .register_cluster(nb.cpu = nb.cpu)
             
-            
+            has.buffer.config <- !missing(buffer.config)
+            has.species.buffer <- !missing(species.buffer)
             
             x.summary <- summary_outsider(x, type = type)
             if (type != "Species") {
@@ -455,7 +456,7 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                          ifelse(this.summary$prop.outside < 75,
                                 folder.list[2],
                                 folder.list[3])), '/',
-                  thiscode, '.png'
+                  listname[thiscode], '.png'
                 )
               
               this.iucn <- x@iucn.distrib[[thiscode]]
@@ -476,19 +477,19 @@ setMethod('plot', signature(x = 'gbif_outsider', y = 'missing'),
                 }, type = "message")
               }
               if (nrow(df) > 0) {
-                if (missing(species.buffer) | missing(buffer.config)) {
+                if (!has.species.buffer | !has.buffer.config) {
                   g <- g +
                     geom_point(data = df,
                                aes(x = X, y = Y, color = distance_to_iucn), 
                                shape = 20) 
 
                 } else {
-                  this.buffer <- buffer.config[[listname[this.code]]]
+                  this.buffer <- buffer.config[[species.buffer[[listname[thiscode]]]]]*1000
                   g <- g +
-                    geom_point(data  = filter(df, distance_to_iucn <= this.buffer*1000),
+                    geom_point(data  = filter(df, distance_to_iucn <= this.buffer),
                                aes(x = X, y = Y),
                                color = '#1b9e77', shape = 20) +
-                    geom_point(data  = filter(df, distance_to_iucn > this.buffer*1000),
+                    geom_point(data  = filter(df, distance_to_iucn > this.buffer),
                                aes(x = X, y = Y, color = distance_to_iucn), 
                                shape = 20) 
                   
