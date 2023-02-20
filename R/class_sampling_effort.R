@@ -167,11 +167,11 @@ calc_sampling_effort <- function(checklist, folder.gbif,
     }
     this.effort.list <- sapply(this.effort.list, unwrap)
     this.effort.rast <- do.call('c', this.effort.list)
-    if(inherits(this.effort.rast, 'list')){
+    if (inherits(this.effort.rast, 'list')) {
       this.effort.rast <- do.call('c', this.effort.rast)
     }
     cli_progress_done()
-    thisfilename <- paste0(store.dir, "sampling.effort.", this.layer, ".tif")
+    thisfilename <- paste0(project.name, "/sampling.effort.", this.layer, ".tif")
     this.effort.rast.sum <- sum(this.effort.rast,
                                 filename = thisfilename,
                                 na.rm = TRUE,
