@@ -9,7 +9,7 @@
 ##'
 ##' @description \code{buffer_iucn} get the IUCN polygons for each class (old 
 ##' and new polygons), it then project to the \code{data.mask} projection,
-##' buffer the polygons with \code{buffer.iucn} and rasterize the final projection.
+##' buffer the polygons with \code{buffer.config} and rasterize the final projection.
 ##'
 ##' @inheritParams gbif_outsider
 ##' @inheritParams taxonomic_conflict
@@ -17,7 +17,7 @@
 ##' @inheritParams .register_cluster
 ##' @param list.iucn a named list of IUCN shapefile path. Name must be Amphibia_Old,
 ##' Amphibia_New, Mammalia_Old, Mammalia_New, Reptilia_Old, Reptilia_New, Aves.
-##' @param buffer.iucn a named \code{list} with taxonomic groups (Class, Order,
+##' @param buffer.config a named \code{list} with taxonomic groups (Class, Order,
 ##'   Family, Species) and associated distance that will be used to buffer IUCN
 ##'   range. If several taxonomic groups are valid for a given species, the
 ##'   lowest one will be prioritized. Buffer distances are given in km.
@@ -32,7 +32,7 @@ rasterize_iucn <- function(checklist,
                            list.iucn,
                            data.mask,
                            project.name,
-                           buffer.iucn,
+                           buffer.config,
                            nb.cpu = 1,
                            do.raster = TRUE,
                            do.buffer = TRUE){
@@ -44,7 +44,7 @@ rasterize_iucn <- function(checklist,
                                      list.iucn = list.iucn,
                                      data.mask = data.mask,
                                      project.name = project.name,
-                                     buffer.iucn = buffer.iucn,
+                                     buffer.config = buffer.config,
                                      nb.cpu = nb.cpu,
                                      do.raster = do.raster,
                                      do.buffer = do.buffer)
@@ -98,7 +98,7 @@ rasterize_iucn <- function(checklist,
     this.name.iucn <- listname.iucn[[this.species]]
     this.code <- listcode[[this.species]]
     this.class <- listclass[[this.species]]
-    this.buffer <- buffer.iucn[[species.buffer[[this.species]]]]*1000
+    this.buffer <- buffer.config[[species.buffer[[this.species]]]]*1000
     
     # Change names of species whose name in .dbf files is given by SpeciesName
     if (this.name.iucn == "Lyciasalamandra billae ssp. billae") {
@@ -139,7 +139,8 @@ rasterize_iucn <- function(checklist,
                          ") failed. Reason: no IUCN range found"),
         logfile = logfile_failed,
         project.name = project.name,
-        open = "a")
+        open = "a",
+        silent = TRUE)
     }
     
     this.poly <- list.iucn.vect[[this.layer]][this.index]
@@ -157,7 +158,8 @@ rasterize_iucn <- function(checklist,
                          ") failed. Project or aggregate failed"),
         logfile = logfile_failed,
         project.name = project.name,
-        open = "a")
+        open = "a",
+        silent = TRUE)
       return(NULL)
     }
     # rasterize ----------------------------------------------------
@@ -175,7 +177,8 @@ rasterize_iucn <- function(checklist,
                            ") failed. Basic Rasterize failed"),
           logfile = logfile_failed,
           project.name = project.name,
-          open = "a")
+          open = "a",
+          silent = TRUE)
         return(NULL)
       }
     }
@@ -194,7 +197,8 @@ rasterize_iucn <- function(checklist,
                            ") failed. Buffer failed"),
           logfile = logfile_failed,
           project.name = project.name,
-          open = "a")
+          open = "a",
+          silent = TRUE)
         return(NULL)
       }
     }
@@ -203,7 +207,8 @@ rasterize_iucn <- function(checklist,
       out.log = this.species,
       logfile = logfile_success,
       project.name = project.name,
-      open = "a")
+      open = "a",
+      silent = TRUE)
     NULL
   }
   if (has.cluster) doParallel::stopImplicitCluster()
@@ -217,7 +222,7 @@ rasterize_iucn <- function(checklist,
                                        list.iucn,
                                        data.mask,
                                        project.name,
-                                       buffer.iucn,
+                                       buffer.config,
                                        nb.cpu,
                                        do.raster,
                                        do.buffer){
@@ -254,40 +259,12 @@ rasterize_iucn <- function(checklist,
   #### do.buffer -------------------------------------------------------  
   stopifnot(is.logical(do.buffer))
   
-  #### buffer.iucn -----------------------------------------------------------
-  if (do.buffer && missing(buffer.iucn)) {
-    stop("Please provide argument buffer.iucn, a named list with the distance used to buffer IUCN range, by taxonomic group")
+  #### buffer.config -----------------------------------------------------------
+  if (do.buffer && missing(buffer.config)) {
+    stop("Please provide argument buffer.config, a named list with the distance used to buffer IUCN range, by taxonomic group")
   } else {
-    .fun_testIfPosNum(unlist(buffer.iucn))
-    buffer.name <- names(buffer.iucn)
-    check.taxa <- sapply(buffer.name, function(x) check_taxa(x, checklist))
-    if ( !all(check.taxa) ) {
-      for (this.taxa in which(!check.taxa)) {
-        cli_alert_danger("taxa {buffer.name[this.taxa]} not found in the \\
-                         provided checklist")
-      }
-      stop(paste0("Some taxa given in buffer.iucn were not found."))
-    }
-    species.buffer <- lapply(seq_len(nrow(checklist)), function(x){
-      checklist.sub <- checklist[x,]
-      for (level_to_check in c("SpeciesName",
-                               "Family",
-                               "Order",
-                               "Class")) {
-        this.check <- sapply(buffer.name,  function(x) x == checklist.sub[ , level_to_check])
-        if (any(this.check)) {
-          return(buffer.name[which(this.check)]) 
-        }
-      }
-      "none"
-    })
-    names(species.buffer) <- checklist$SpeciesName
-    species.unassigned <- which(unlist(species.buffer) == "none")
-    if (length(species.unassigned) > 0) {
-      cli_alert_danger("the following species were assigned no buffer.iucn \\
-                       values: {names(species.buffer)[species.unassigned]}")
-      stop("Please review buffer.iucn to have all species covered")
-    }
+    .fun_testIfPosNum(unlist(buffer.config))
+    species.buffer <- get_species_buffer(buffer.config, checklist)
   }
   
   return(list(
@@ -295,7 +272,7 @@ rasterize_iucn <- function(checklist,
     "list.iucn" = list.iucn,
     "data.mask" = data.mask,
     "project.name" = project.name,
-    "buffer.iucn" = buffer.iucn,
+    "buffer.config" = buffer.config,
     "species.buffer" = species.buffer,
     "nb.cpu" = nb.cpu,
     "do.raster" = do.raster,
@@ -315,13 +292,13 @@ rasterize_iucn <- function(checklist,
 ##'
 ##' @description \code{buffer_iucn} get the IUCN polygons for each class (old 
 ##' and new polygons), it then project to the \code{data.mask} projection,
-##' buffer the polygons with \code{buffer.iucn} and rasterize the final projection.
+##' buffer the polygons with \code{buffer.config} and rasterize the final projection.
 ##'
 ##' @inheritParams gbif_outsider
 ##' @inheritParams taxonomic_conflict
 ##' @inheritParams sampling_effort
 ##' @inheritParams .register_cluster
-##' @param buffer.iucn a named \code{list} with taxonomic groups (Class, Order,
+##' @param buffer.config a named \code{list} with taxonomic groups (Class, Order,
 ##'   Family, Species) and associated distance that will be used to buffer IUCN
 ##'   range. If several taxonomic groups are valid for a given species, the
 ##'   lowest one will be prioritized. Buffer distances are given in km.
@@ -335,7 +312,7 @@ buffer_iucn <- function(checklist,
                         folder.iucn.raster,
                         data.mask,
                         project.name,
-                        buffer.iucn,
+                        buffer.config,
                         nb.cpu = 1){
   
   cli_h1("Buffer IUCN range maps")
@@ -345,7 +322,7 @@ buffer_iucn <- function(checklist,
                                   folder.iucn.raster = folder.iucn.raster,
                                   data.mask = data.mask,
                                   project.name = project.name,
-                                  buffer.iucn = buffer.iucn,
+                                  buffer.config = buffer.config,
                                   nb.cpu = nb.cpu)
   for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
   
@@ -385,7 +362,7 @@ buffer_iucn <- function(checklist,
     this.name.iucn <- listname.iucn[[this.species]]
     this.code <- listcode[[this.species]]
     this.class <- listclass[[this.species]]
-    this.buffer <- buffer.iucn[[species.buffer[[this.species]]]]*1000
+    this.buffer <- buffer.config[[species.buffer[[this.species]]]]*1000
     
     this.file <- locate_iucn_distribution(this.code, folder.iucn, filetype = ".shp")
 
@@ -410,7 +387,8 @@ buffer_iucn <- function(checklist,
                          ") failed. Read or aggregate failed"),
         logfile = logfile_failed,
         project.name = project.name,
-        open = "a")
+        open = "a",
+        silent = TRUE)
       return(NULL)
     }
     # buffer ----------------------------------------------------
@@ -427,7 +405,8 @@ buffer_iucn <- function(checklist,
                            ") failed. Buffer failed"),
           logfile = logfile_failed,
           project.name = project.name,
-          open = "a")
+          open = "a",
+          silent = TRUE)
         return(NULL)
       }
     warnings()
@@ -436,7 +415,8 @@ buffer_iucn <- function(checklist,
       out.log = this.species,
       logfile = logfile_success,
       project.name = project.name,
-      open = "a")
+      open = "a",
+      silent = TRUE)
     NULL
   }
   if (has.cluster) doParallel::stopImplicitCluster()
@@ -450,7 +430,7 @@ buffer_iucn <- function(checklist,
                                     folder.iucn.raster,
                                     data.mask,
                                     project.name,
-                                    buffer.iucn,
+                                    buffer.config,
                                     nb.cpu){
   
   
@@ -476,50 +456,81 @@ buffer_iucn <- function(checklist,
   #### nb.cpu -------------------------------------------------------  
   .fun_testIfPosInt(nb.cpu)
 
-  #### buffer.iucn -----------------------------------------------------------
-  if (missing(buffer.iucn)) {
-    stop("Please provide argument buffer.iucn, a named list with the distance used to buffer IUCN range, by taxonomic group")
+  #### buffer.config -----------------------------------------------------------
+  if (missing(buffer.config)) {
+    stop("Please provide argument buffer.config, a named list with the distance used to buffer IUCN range, by taxonomic group")
   } else {
-    .fun_testIfPosNum(unlist(buffer.iucn))
-    buffer.name <- names(buffer.iucn)
-    check.taxa <- sapply(buffer.name, function(x) check_taxa(x, checklist))
-    if ( !all(check.taxa) ) {
-      for (this.taxa in which(!check.taxa)) {
-        cli_alert_danger("taxa {buffer.name[this.taxa]} not found in the \\
-                         provided checklist")
-      }
-      stop(paste0("Some taxa given in buffer.iucn were not found."))
-    }
-    species.buffer <- lapply(seq_len(nrow(checklist)), function(x){
-      checklist.sub <- checklist[x,]
-      for (level_to_check in c("SpeciesName",
-                               "Family",
-                               "Order",
-                               "Class")) {
-        this.check <- sapply(buffer.name,  function(x) x == checklist.sub[ , level_to_check])
-        if (any(this.check)) {
-          return(buffer.name[which(this.check)]) 
-        }
-      }
-      "none"
-    })
-    names(species.buffer) <- checklist$SpeciesName
-    species.unassigned <- which(unlist(species.buffer) == "none")
-    if (length(species.unassigned) > 0) {
-      cli_alert_danger("the following species were assigned no buffer.iucn \\
-                       values: {names(species.buffer)[species.unassigned]}")
-      stop("Please review buffer.iucn to have all species covered")
-    }
+    .fun_testIfPosNum(unlist(buffer.config))
+    species.buffer <- get_species_buffer(buffer.config, checklist)
   }
   
   return(list(
     "checklist" = checklist, 
     "data.mask" = data.mask,
     "project.name" = project.name,
-    "buffer.iucn" = buffer.iucn,
+    "buffer.config" = buffer.config,
     "species.buffer" = species.buffer,
     "nb.cpu" = nb.cpu
   ))
 }
 
 
+## --------------------------------------------------------------------------- #
+# 3. get_species_buffer         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name get_species_buffer
+##' @author Remi Patin
+##'
+##' @title get species-buffer association
+##'
+##' @description \code{get_species_buffer} get the buffer corresponding to each
+##'   species, based on a list with buffer distance based on taxonomy
+##'
+##' @inheritParams gbif_outsider
+##' @inheritParams taxonomic_conflict
+##' @inheritParams sampling_effort
+##' @inheritParams .register_cluster
+##' @param buffer.config a named \code{list} with taxonomic groups (Class, Order,
+##'   Family, Species) and associated distance that will be used to buffer IUCN
+##'   range. If several taxonomic groups are valid for a given species, the
+##'   lowest one will be prioritized. Buffer distances are given in km.
+##' @param folder.iucn.raster a path to a folder with all IUCN range as raster.
+##' used to determine which species have a IUCN range.
+##' @importFrom terra focal rast vect buffer aggregate rasterize
+##' @return a named list with the buffer associated to each species
+
+get_species_buffer <- function(buffer.config, checklist){
+  .check_checklist(checklist)
+  
+  buffer.name <- names(buffer.config)
+  check.taxa <- sapply(buffer.name, function(x) check_taxa(x, checklist))
+  if ( !all(check.taxa) ) {
+    for (this.taxa in which(!check.taxa)) {
+      cli_alert_danger("taxa {buffer.name[this.taxa]} not found in the \\
+                         provided checklist")
+    }
+    stop(paste0("Some taxa given in buffer.config were not found."))
+  }
+  species.buffer <- lapply(seq_len(nrow(checklist)), function(x){
+    checklist.sub <- checklist[x,]
+    for (level_to_check in c("SpeciesName",
+                             "Family",
+                             "Order",
+                             "Class")) {
+      this.check <- sapply(buffer.name,  function(x) x == checklist.sub[ , level_to_check])
+      if (any(this.check)) {
+        return(buffer.name[which(this.check)]) 
+      }
+    }
+    "none"
+  })
+  names(species.buffer) <- checklist$SpeciesName
+  species.unassigned <- which(unlist(species.buffer) == "none")
+  if (length(species.unassigned) > 0) {
+    cli_alert_danger("the following species were assigned no buffer.config \\
+                       values: {names(species.buffer)[species.unassigned]}")
+    stop("Please review buffer.config to have all species covered")
+  }
+  species.buffer
+}
