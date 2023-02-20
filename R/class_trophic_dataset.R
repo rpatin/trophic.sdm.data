@@ -112,6 +112,7 @@ setClass("trophic_dataset",
          representation(summary.occurrence = "data.frame",
                         summary.predator = "data.frame",
                         summary.prey = "data.frame",
+                        summary.filter = "data.frame",
                         file.occurrence.link = "character",
                         file.trophic.link = "character",
                         metaweb.filtered = "data.frame",
@@ -125,9 +126,9 @@ setClass("trophic_dataset",
                         datatype = "character",
                         project.name = "character",
                         sampling.effort = "sampling_effort",
-                        data.mask = "SpatRaster"),
+                        data.mask = "PackedSpatRaster"),
          validity = function(object){
-           .check_checklist(object@checklist)
+           # .check_checklist(object@checklist)
            .check_checklist(object@checklist.filtered)
            .check_metaweb(object@metaweb)
            .check_metaweb(object@metaweb.filtered)
@@ -137,11 +138,12 @@ setClass("trophic_dataset",
            .fun_testIfInherits(object@filtered.species, "character")
            .fun_testIfInherits(object@param, "list")
            .fun_testIfIn(obejct@datatype, c("iucn","gbif"))
-           .fun_testIfInherits(object@data.mask, "SpatRaster")
+           .fun_testIfInherits(object@data.mask, "PackedSpatRaster")
            .fun_testIfInherits(object@project.name, "character")
            if (!all(c("summary.occurrence.raw",
                       "summary.predator.raw",
                       "summary.prey.raw",
+                      "summary.filter.raw",
                       "file.trophic.raw.link",
                       "metaweb",
                       "checklist",
@@ -745,6 +747,7 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
                    info = "trophic_dataset") {
             
             possible_info <- c("summary.occurrence",
+                               "summary.uncertain",
                                "summary.predator",
                                "summary.prey",
                                "metaweb",
@@ -757,10 +760,23 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
             
             if (info == "summary.occurrence") {
               return(x@summary.occurrence)
+            } else if (info == "summary.uncertain") {
+              output <- x@summary.occurrence %>% 
+                mutate(tot.iucn =
+                         absence.inside.certain + 
+                         absence.inside.uncertain +
+                         presence,
+                       prop.presence = presence/tot.iucn,
+                       prop.certain = absence.inside.certain/tot.iucn,
+                       prop.uncertain = absence.inside.uncertain/tot.iucn) %>% 
+                left_join(x@checklist.filtered, by = c("SpeciesName","Code"))
+              return(output)
             } else if (info == "summary.predator") {
               return(x@summary.predator)
             } else if (info == "summary.prey") {
               return(x@summary.prey)
+            } else if (info == "summary.filter") {
+              return(x@summary.filter)
             } else if (info == "metaweb") {
               return(x@metaweb.filtered)
             } else if (info == "checklist") {
@@ -792,3 +808,317 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
             }
           })
 
+### plot_uncertain    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("plot_uncertain", def = function(x, ...) {
+  standardGeneric("plot_uncertain") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+##' @importFrom tidyterra geom_spatraster
+##' @importFrom ggplot2 geom_tile ggplot
+##' @importFrom cowplot save_plot
+
+setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
+          function(x, nb.cpu = 1){
+            checklist <- dataset.full@checklist.filtered
+            .fun_testIfPosInt(nb.cpu)
+            has.cluster <- .register_cluster(nb.cpu)
+            listcode <- checklist$Code
+            names(listcode) <- checklist$SpeciesName
+            listClass <- checklist$Class
+            names(listClass) <- checklist$SpeciesName
+            listOrder <- checklist$Order
+            names(listOrder) <- checklist$SpeciesName
+            plot.folder <- paste0(x@project.name, "/plot.uncertain/")
+            if (!dir.exists(plot.folder)) dir.create(plot.folder, showWarnings = FALSE)
+            summary.uncertain <- summary_trophic(x, info = "summary.uncertain")
+            
+            data.mask <- unwrap(x@data.mask)
+            this.species <- "Capra ibex"  
+            foreach(this.species = names(listcode)) %dopar% {
+              cli_progress_step(this.species)
+              this.Order <- listOrder[this.species]
+              this.Class <- listClass[this.species]
+              this.summary <- filter(summary.uncertain, SpeciesName == this.species)
+              this.file <- paste0(plot.folder, this.Class, "_", this.Order, "_", this.species, ".png")
+              this.title <- paste0(this.species, 
+                                   "\n presence: ", this.summary$presence, " (",
+                                   round(this.summary$prop.presence*100), "%)",
+                                   "\n uncertain cells: ",
+                                   this.summary$absence.inside.uncertain, " (",
+                                   round(this.summary$prop.uncertain*100), "%)")
+              this.df <- load_data(dataset.full, SpeciesName = this.species, type = "occurrence") %>% 
+                filter(inside_iucn) %>% 
+                mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
+              g <- ggplot() +
+                geom_spatraster(data = mutate(data.mask, MaskNew5Km = as.character(MaskNew5Km))) +
+                geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
+                scale_fill_manual(
+                  "IUCN distribution",
+                  values = c("grey40", "#d95f02", "#7570b3", "#1b9e77"),
+                  breaks = c("1","presence", "certain absence", "uncertain absence"),
+                  label = c("Outside IUCN", "Presence", "Absence (certain)", "Absence (uncertain)"),
+                  na.value = "grey") +
+                scale_x_continuous(limits = range(this.df$x)) +
+                scale_y_continuous(limits = range(this.df$y)) +
+                ggtitle(this.title)
+              save_plot(this.file, g, base_width = 20/cm(1), base_height = 18/cm(1))
+              cli_progress_done()
+              NULL
+            }
+            invisible(NULL)
+          })
+
+
+### plot_trophic    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("plot_trophic", def = function(x, ...) {
+  standardGeneric("plot_trophic") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+##' @importFrom tidyterra geom_spatraster
+##' @importFrom ggplot2 geom_tile ggplot
+##' @importFrom cowplot save_plot
+##' @importFrom dplyr anti_join
+
+setMethod('plot_trophic', signature(x = 'trophic_dataset'),
+          function(x, nb.cpu = 1){
+            checklist <- dataset.full@checklist.filtered
+            .fun_testIfPosInt(nb.cpu)
+            has.cluster <- .register_cluster(nb.cpu)
+            listcode <- checklist$Code
+            names(listcode) <- checklist$SpeciesName
+            listClass <- checklist$Class
+            names(listClass) <- checklist$SpeciesName
+            listOrder <- checklist$Order
+            names(listOrder) <- checklist$SpeciesName
+            plot.folder <- paste0(x@project.name, "/plot.trophic/")
+            if (!dir.exists(plot.folder)) dir.create(plot.folder, showWarnings = FALSE)
+            data.mask <- unwrap(x@data.mask)
+            
+            summary.uncertain <- summary_trophic(x, info = "summary.uncertain")
+            this.species <- "Canis lupus" 
+            foreach(this.species = names(listcode)) %dopar% {
+              cli_progress_step(this.species)
+              
+              this.prey.filtered <- length(x@filtered.prey[[this.species]])
+              this.prey.kept <- length(x@kept.prey[[this.species]])
+              this.prey <- this.prey.filtered + this.prey.kept
+              if (this.prey > 0) {
+                
+                
+                this.Order <- listOrder[this.species]
+                this.Class <- listClass[this.species]
+                this.summary <- filter(summary.uncertain, SpeciesName == this.species)
+                this.file <- paste0(plot.folder, this.Class, "_", this.Order, "_", this.species, ".png")
+                
+                this.occurrence <- load_data(dataset.full, 
+                                             SpeciesName = this.species,
+                                             type = "occurrence") 
+                this.df <- 
+                  this.occurrence %>% 
+                  filter(inside_iucn) %>% 
+                  mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
+                this.trophic <- load_data(dataset.full, 
+                                          SpeciesName = this.species,
+                                          type = "trophic") %>% 
+                  select(cell, x, y)
+                
+                this.trophic.filtered <- 
+                  this.occurrence %>% 
+                  filter(status != "uncertain") %>% 
+                  anti_join(this.trophic, by = c("cell", "x", "y")) %>% 
+                  mutate(datatype = ifelse(presence == 1, "filtered presence", 
+                                           ifelse(inside_iucn,
+                                                  "filtered absence within IUCN",
+                                                  "filtered absence outside IUCN")))
+                # nrow(this.trophic.filtered)
+                # nrow(this.occurrence)
+                filtered.presence <- length(which(this.trophic.filtered$datatype == 
+                                                    "filtered presence"))
+                filtered.absence.outside <- length(which(this.trophic.filtered$datatype == 
+                                                           "filtered absence outside IUCN"))
+                filtered.absence.within <- length(which(this.trophic.filtered$datatype == 
+                                                          "filtered absence within IUCN"))
+                this.title <- paste0(this.species, 
+                                     "\n filtered cells: ", nrow(this.trophic.filtered), " (",
+                                     round(nrow(this.trophic.filtered)/
+                                             nrow(filter(this.occurrence, status != "uncertain"))*100), "%)",
+                                     " ; filtered presence: ", 
+                                     filtered.presence, "/", this.summary$presence, 
+                                     " ; filtered absence inside IUCN: ", 
+                                     filtered.absence.within, "/", this.summary$absence.inside.certain, 
+                                     " ; filtered absence outside IUCN: ", 
+                                     filtered.absence.outside, "/", this.summary$absence.outside, 
+                                     "\n filtered prey: ",
+                                     this.prey.filtered, "/", this.prey)
+                
+                g <- ggplot() +
+                  geom_spatraster(data = mutate(data.mask, MaskNew5Km = as.character(MaskNew5Km))) +
+                  geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
+                  geom_tile(data = this.trophic.filtered, aes(x = x, y = y, fill = datatype)) +
+                  scale_fill_manual(
+                    "IUCN distribution",
+                    values = c("grey40", "#d95f02", "#7570b3", "grey70",
+                                       "#895f02", "#353073", "grey20"),
+                                       breaks = c("1","presence", "certain absence", "uncertain absence",
+                                                  "filtered presence", "filtered absence within IUCN",
+                                                  "filtered absence outside IUCN"),
+                    label = c("Outside IUCN", "Presence", "Absence (certain)", "Absence (uncertain)",
+                              "Filtered presence", "Filtered absence (IUCN)", 
+                              "Filtered absence (outside)"),
+                    na.value = "grey") +
+                  ggtitle(this.title)
+                save_plot(this.file, g, base_width = 40/cm(1), base_height = 35/cm(1))
+              }
+              cli_progress_done()
+              NULL
+            }
+            invisible(NULL)
+          }
+)
+
+
+
+### rasterize_uncertain  --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("rasterize_uncertain", def = function(x, ...) {
+  standardGeneric("rasterize_uncertain") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+
+setMethod('rasterize_uncertain', signature(x = 'trophic_dataset'),
+          function(x, raster.by = "Class"){
+            checklist <- x@checklist.filtered
+            .fun_testIfIn(raster.by, c("Class","Order","Family"))
+            data.mask <- unwrap(x@data.mask)
+            foreach(this.taxa = unique(checklist[, raster.by])) %do% {
+              cli_h2(this.taxa)
+              
+              taxa.uncertain <- classify(unwrap(x@data.mask), matrix(c(1,0), ncol = 2))
+              taxa.count <- classify(unwrap(x@data.mask), matrix(c(1,0), ncol = 2))
+              
+              this.checklist <- checklist[which(checklist[ , raster.by] == this.taxa), ]
+              for (this.species in this.checklist$SpeciesName) {
+                cli_progress_step(this.species)
+                this.occurrence <- load_data(x, SpeciesName = this.species, type = "occurrence")
+                xy.uncertain <- this.occurrence %>% 
+                  filter(status == "uncertain") %>% 
+                  select(x,y) %>% 
+                  as.matrix()
+                xy.count <- this.occurrence %>% 
+                  filter(inside_iucn) %>% 
+                  select(x,y) %>% 
+                  as.matrix()
+                this.uncertain <- rasterize(xy.uncertain, data.mask, background = 0)
+                this.count <- rasterize(xy.count, data.mask, background = 0)
+                
+                taxa.uncertain <- taxa.uncertain + this.uncertain
+                taxa.count <- taxa.count + this.count
+              }
+              cli_progress_done()
+              
+              raster.uncertain.na <- taxa.uncertain/taxa.count
+              raster.uncertain <- cover(raster.uncertain.na, taxa.count)
+              writeRaster(raster.uncertain, paste0(x@project.name,"/summary.uncertain_",this.taxa,".tif"), overwrite = TRUE)
+              NULL
+            }
+            invisible(NULL)
+          }
+)
+
+
+### rasterize_prey_filtering  --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("rasterize_prey_filtering", def = function(x, ...) {
+  standardGeneric("rasterize_prey_filtering") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom dplyr anti_join select filter
+##' @importFrom terra unwrap classify cover writeRaster rasterize
+
+setMethod('rasterize_prey_filtering', signature(x = 'trophic_dataset'),
+          function(x, raster.by = "Class"){
+            checklist <- x@checklist.filtered
+            .fun_testIfIn(raster.by, c("Class","Order","Family"))
+            data.mask <- unwrap(x@data.mask)
+            foreach(this.taxa = unique(checklist[, raster.by])) %do% {
+              cli_h2(this.taxa)
+              
+              taxa.filtered <- classify(unwrap(x@data.mask), matrix(c(1,0), ncol = 2))
+              taxa.count <- classify(unwrap(x@data.mask), matrix(c(1,0), ncol = 2))
+              
+              this.checklist <- checklist[which(checklist[ , raster.by] == this.taxa), ]
+              for (this.species in this.checklist$SpeciesName) {
+                cli_progress_step(this.species)
+                if (length(x@kept.prey[[this.species]]) > 0) {
+                  this.occurrence <- load_data(x, SpeciesName = this.species, type = "occurrence")
+                  this.trophic <- load_data(x, SpeciesName = this.species, type = "trophic")
+                  xy.filtered <- this.occurrence %>% 
+                    filter(status == "certain") %>% 
+                    select(cell, x, y) %>% 
+                    anti_join(this.trophic, by = c("cell","x","y")) %>% 
+                    select(x,y) %>% 
+                    as.matrix()
+                  xy.count <- this.occurrence %>% 
+                    filter(status == "certain") %>% 
+                    select(x,y) %>% 
+                    as.matrix()
+                  if(nrow(xy.count) > 0){
+                    this.count <- rasterize(xy.count, data.mask, background = 0)
+                    taxa.count <- taxa.count + this.count
+                  }
+                  if(nrow(xy.filtered) > 0){
+                    this.filtered <- rasterize(xy.filtered, data.mask, background = 0)
+                    taxa.filtered <- taxa.filtered + this.filtered
+                  }
+                  
+                }
+              }
+              cli_progress_done()
+              if (global(taxa.count, 'max', na.rm = TRUE) > 0) {
+                raster.filtered.na <- taxa.filtered/taxa.count
+                raster.filtered <- cover(raster.filtered.na, taxa.count)
+                writeRaster(raster.filtered, paste0(x@project.name,"/summary.filtered_",this.taxa,".tif"), overwrite = TRUE)
+              } else {
+                cli_alert_warning("Skip {raster.by} {this.taxa}, that contained no predator, once prey were filtered.")
+              }
+              NULL
+            }
+            invisible(NULL)
+          }
+)
