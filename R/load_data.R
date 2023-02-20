@@ -32,8 +32,10 @@ load_gbif_data <- function(species.name, folder.gbif){
     if (inherits(test.read, "try-error")) {
       return("File could not be read")
     } 
-    
-  if (any(grepl(pattern = "geometry", x = colnames(output)))) {
+    if (nrow(output) == 0) {
+      return("File have no occurrences")
+    }
+    if (any(grepl(pattern = "geometry", x = colnames(output)))) {
       cli_alert_warning("Reprojecting species {species.name}")
       this.geometry <- output$geometry
       this.X <- sapply(strsplit(this.geometry, split = "|", fixed = TRUE), 
@@ -61,7 +63,7 @@ load_gbif_data <- function(species.name, folder.gbif){
     } 
     
     if (any(output$species != species.name)) {
-      return("Error in species name")
+      # return("Error in species name")
       # in case harmonization is required in the future
       output <- mutate(output, species = species.name)
     }
