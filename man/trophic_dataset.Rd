@@ -18,6 +18,14 @@
 \alias{reset,trophic_dataset-method}
 \alias{summary_trophic}
 \alias{summary_trophic,trophic_dataset-method}
+\alias{plot_uncertain}
+\alias{plot_uncertain,trophic_dataset-method}
+\alias{plot_trophic}
+\alias{plot_trophic,trophic_dataset-method}
+\alias{rasterize_uncertain}
+\alias{rasterize_uncertain,trophic_dataset-method}
+\alias{rasterize_prey_filtering}
+\alias{rasterize_prey_filtering,trophic_dataset-method}
 \alias{prepare_dataset_gbif}
 \title{Dataset for running trophic SDM}
 \usage{
@@ -47,6 +55,22 @@ summary_trophic(x, ...)
 
 \S4method{summary_trophic}{trophic_dataset}(x, info = "trophic_dataset")
 
+plot_uncertain(x, ...)
+
+\S4method{plot_uncertain}{trophic_dataset}(x, nb.cpu = 1)
+
+plot_trophic(x, ...)
+
+\S4method{plot_trophic}{trophic_dataset}(x, nb.cpu = 1)
+
+rasterize_uncertain(x, ...)
+
+\S4method{rasterize_uncertain}{trophic_dataset}(x, raster.by = "Class")
+
+rasterize_prey_filtering(x, ...)
+
+\S4method{rasterize_prey_filtering}{trophic_dataset}(x, raster.by = "Class")
+
 prepare_dataset_gbif(
   checklist,
   metaweb,
@@ -56,7 +80,7 @@ prepare_dataset_gbif(
   data.mask,
   project.name,
   min.gbif,
-  buffer.iucn,
+  buffer.config,
   quantile.absence.certain,
   prop.prey.certain,
   uncertain.value,
@@ -106,6 +130,8 @@ occurrence}
 
 \item{info}{the type of info return}
 
+\item{nb.cpu}{number of CPU to use}
+
 \item{checklist}{a \code{data.frame} with information on all species of interest}
 
 \item{metaweb}{a \code{data.frame} with all species interactions listed}
@@ -129,7 +155,7 @@ and data may be written}
 \item{min.gbif}{a \code{numeric} (\emph{default} \code{25}), the minimum
 number of gbif occurrences below which a species is filtered.}
 
-\item{buffer.iucn}{a named \code{list} with taxonomic groups (Class, Order,
+\item{buffer.config}{a named \code{list} with taxonomic groups (Class, Order,
 Family, Species) and associated distance that will be used to buffer IUCN
 range. If several taxonomic groups are valid for a given species, the
 lowest one will be prioritized. Buffer distances are given in km.}
@@ -145,8 +171,6 @@ certain for a raster cell to be included in the species dataset.}
 \item{uncertain.value}{a \code{integer} (\code{0} or \code{1} ;
 \emph{default} \code{0}). The value given to uncertain absences in cells
 where more than \code{prop.prey.certain} prey are considered as certain.}
-
-\item{nb.cpu}{number of CPU to use}
 }
 \description{
 Class returned by \code{\link{prepare_dataset_gbif}} and

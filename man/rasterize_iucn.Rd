@@ -10,7 +10,7 @@ rasterize_iucn(
   list.iucn,
   data.mask,
   project.name,
-  buffer.iucn,
+  buffer.config,
   nb.cpu = 1,
   do.raster = TRUE,
   do.buffer = TRUE
@@ -31,7 +31,7 @@ in the project}
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
-\item{buffer.iucn}{a named \code{list} with taxonomic groups (Class, Order,
+\item{buffer.config}{a named \code{list} with taxonomic groups (Class, Order,
 Family, Species) and associated distance that will be used to buffer IUCN
 range. If several taxonomic groups are valid for a given species, the
 lowest one will be prioritized. Buffer distances are given in km.}
@@ -47,7 +47,7 @@ needs to be calculated}
 \description{
 \code{buffer_iucn} get the IUCN polygons for each class (old 
 and new polygons), it then project to the \code{data.mask} projection,
-buffer the polygons with \code{buffer.iucn} and rasterize the final projection.
+buffer the polygons with \code{buffer.config} and rasterize the final projection.
 }
 \author{
 Remi Patin

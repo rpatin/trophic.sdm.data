@@ -22,7 +22,14 @@ detect_gbif_outsider(
 
 summary_outsider(object, type = "Class")
 
-\S4method{plot}{gbif_outsider,missing}(x, type = "Class", nb.cpu = 1, plot.folder = "gbif_outsider")
+\S4method{plot}{gbif_outsider,missing}(
+  x,
+  type = "Class",
+  nb.cpu = 1,
+  plot.folder = "gbif_outsider",
+  buffer.config,
+  species.buffer
+)
 }
 \arguments{
 \item{checklist}{a \code{data.frame} with information on all species of interest}
