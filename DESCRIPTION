@@ -4,8 +4,8 @@ Title: Preparing data for European Vertebrates trophic SDM
 Version: 0.0.1
 Authors@R: c(person("Remi", "Patin", role = c("aut", "cre"), email = "remi.patin@normale.fr"),
              person("Giovanni", "Poggiato", role = "aut"))
-URL: https://github.com/rpatin/trophic_sdm_data
-BugReports: https://github.com/rpatin/trophic_sdm_data/issues
+URL: https://github.com/rpatin/trophic.sdm.data
+BugReports: https://github.com/rpatin/trophic.sdm.data/issues
 Description: Provides tools to prepare gbif and IUCN data to be used for a trophic SDM.
 License: GPL-3
 LazyData: TRUE
