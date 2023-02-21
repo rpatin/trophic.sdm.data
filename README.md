@@ -4,12 +4,27 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 <!-- [![](https://www.r-pkg.org/badges/version/segclust2d?color=orange)](https://cran.r-project.org/package=segclust2d) -->
 <!-- [![](http://cranlogs.r-pkg.org/badges/grand-total/segclust2d?color=yellow)](https://cran.r-project.org/package=segclust2d) -->
 
-[![](https://img.shields.io/badge/devel%20version-0.0.1-blue.svg)](https://github.com/rpatin/trophic.sdm_data)
-[![](https://img.shields.io/github/last-commit/rpatin/trophic.sdm_data.svg)](https://github.com/rpatin/trophic.sdm_data/commits/main)
+[![](https://img.shields.io/badge/devel%20version-0.0.2-blue.svg)](https://github.com/rpatin/trophic.sdm.data)
+[![](https://img.shields.io/github/last-commit/rpatin/trophic.sdm.data.svg)](https://github.com/rpatin/trophic.sdm.data/commits/main)
 
 # Introduction
 
 # News
+
+## v.0.0.2
+
+### Upcoming features
+
+- support for filtering atlas data & multiple resolutions
+- workflow for IUCN
+- evaluations
+- subsampling
+- calculation of aggregated prey metrics
+- splitting of trophic group in metaweb
+
+### bugfix
+
+- threshold are now always discrete values
 
 ## v.0.0.1 - First Release (21/02/2023)
 
@@ -37,7 +52,7 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 # Installation
 
 If you want the newest
-[![](https://img.shields.io/badge/devel%20version-0.0.1-blue.svg)](https://github.com/rpatin/trophic.sdm.data),
+[![](https://img.shields.io/badge/devel%20version-0.0.2-blue.svg)](https://github.com/rpatin/trophic.sdm.data),
 you can install `trophic.sdm.data` from github with:
 
 ``` r

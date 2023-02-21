@@ -194,8 +194,7 @@ prepare_dataset_gbif <- function(checklist,
               vect(geom = c("x","y"), crs = crs("EPSG:3035"))
             this.effort <- extract(this.effort.rast,
                                    this.presence.vect)[, this.effort.layer]
-            this.threshold <- quantile(this.effort, probs = this.quantile)
-            
+            this.threshold <- quantile(this.effort, probs = this.quantile, type = 3)
             this.uncertain.vect <- 
               this.occurrence.df[index.uncertain,] %>% 
               vect(geom = c("x","y"), crs = crs("EPSG:3035"))

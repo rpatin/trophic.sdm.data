@@ -12,13 +12,27 @@ library(badger)
 
 <!-- `r badger::badge_cran_release("segclust2d", "orange")` -->
 <!-- `r badger::badge_cran_download("segclust2d", "grand-total", "yellow")` -->
-`r badger::badge_github_version("rpatin/trophic.sdm_data", "blue")`
-`r badger::badge_last_commit("rpatin/trophic.sdm_data")`
+`r badger::badge_github_version("rpatin/trophic.sdm.data", "blue")`
+`r badger::badge_last_commit("rpatin/trophic.sdm.data")`
 
 # Introduction
 
 
 # News 
+
+## v.0.0.2
+
+### Upcoming features
+- support for filtering atlas data & multiple resolutions
+- workflow for IUCN
+- evaluations
+- subsampling
+- calculation of aggregated prey metrics
+- splitting of trophic group in metaweb
+
+### bugfix
+- threshold are now always discrete values
+
 
 ## v.0.0.1 - First Release (21/02/2023)
 
