@@ -11,7 +11,7 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 
 # News
 
-## v.0.0.2
+## v.0.0.3
 
 ### Upcoming features
 
@@ -22,9 +22,12 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 - calculation of aggregated prey metrics
 - splitting of trophic group in metaweb
 
+## v.0.0.2 - Bugfix Release (22/02/2023)
+
 ### bugfix
 
 - threshold are now always discrete values
+- buffer_iucn only create non-existing files
 
 ## v.0.0.1 - First Release (21/02/2023)
 
