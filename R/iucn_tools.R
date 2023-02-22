@@ -305,7 +305,9 @@ rasterize_iucn <- function(checklist,
 ##' @param folder.iucn.raster a path to a folder with all IUCN range as raster.
 ##' used to determine which species have a IUCN range.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
+##' @importFrom cli cli_status_clear
 ##' @return a named list with the buffer associated to each species
+##' 
 
 buffer_iucn <- function(checklist, 
                         folder.iucn,
@@ -374,8 +376,7 @@ buffer_iucn <- function(checklist,
         silent = TRUE)
     } else if (!file.exists(this.out.file)) {
       cli_progress_step(this.species)
-      browser()
-      
+
       read.try <- try({
         this.poly <- vect(this.file)
         if (nrow(this.poly) > 1) {
