@@ -314,7 +314,7 @@ buffer_iucn <- function(checklist,
                         project.name,
                         buffer.config,
                         nb.cpu = 1){
-  
+  cli_status_clear()
   cli_h1("Buffer IUCN range maps")
   cli_progress_step("Argument check")
   args <- .buffer_iucn.check.args(checklist = checklist, 
@@ -327,10 +327,10 @@ buffer_iucn <- function(checklist,
   for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
   
   has.cluster <- .register_cluster(nb.cpu = nb.cpu)
-
+  
   buffer.dir <- paste0(project.name, "/buffer/")
   if (!dir.exists(buffer.dir)) dir.create(buffer.dir, recursive = TRUE, showWarnings = FALSE)
-
+  
   avail_code = sub(".tif","", list.files(folder.iucn.raster))
   checklist.sub <- 
     checklist %>% 
@@ -353,19 +353,17 @@ buffer_iucn <- function(checklist,
   # this.species = names(listcode)[1]
   # this.species = names(listcode)[456]
   # this.species = names(listcode)[510]
-  
-  cli_progress_step("Running Species Loop")
+  cli_progress_done()
+  cli_alert_info("Running Species Loop")
   # species loop ------------------------------------------------------------
   
   foreach(this.species = names(listcode)) %dopar% {
-    cli_progress_step(this.species)
-    this.name.iucn <- listname.iucn[[this.species]]
     this.code <- listcode[[this.species]]
+    this.out.file <- paste0(buffer.dir, this.code, ".tif")
+    this.name.iucn <- listname.iucn[[this.species]]
     this.class <- listclass[[this.species]]
     this.buffer <- buffer.config[[species.buffer[[this.species]]]]*1000
-    
     this.file <- locate_iucn_distribution(this.code, folder.iucn, filetype = ".shp")
-
     if (length(this.file) == 0) {
       .write_logfile(
         out.log = paste0(this.species, " (", this.class,
@@ -374,32 +372,37 @@ buffer_iucn <- function(checklist,
         project.name = project.name,
         open = "a",
         silent = TRUE)
-    }
-    read.try <- try({
-      this.poly <- vect(this.file)
-      if (nrow(this.poly) > 1) {
-        this.poly <- aggregate(this.poly)
+    } else if (!file.exists(this.out.file)) {
+      cli_progress_step(this.species)
+      browser()
+      
+      read.try <- try({
+        this.poly <- vect(this.file)
+        if (nrow(this.poly) > 1) {
+          this.poly <- aggregate(this.poly)
+        }
+      })
+      if (inherits(read.try, "try-error")) {
+        cli_process_failed()
+        .write_logfile(
+          out.log = paste0(this.species, " (", this.class,
+                           ") failed. Read or aggregate failed"),
+          logfile = logfile_failed,
+          project.name = project.name,
+          open = "a",
+          silent = TRUE)
+        return(NULL)
       }
-    })
-    if (inherits(read.try, "try-error")) {
-      .write_logfile(
-        out.log = paste0(this.species, " (", this.class,
-                         ") failed. Read or aggregate failed"),
-        logfile = logfile_failed,
-        project.name = project.name,
-        open = "a",
-        silent = TRUE)
-      return(NULL)
-    }
-    # buffer ----------------------------------------------------
+      # buffer ----------------------------------------------------
       buffer.try <- try({
         this.poly.buffered <- buffer(this.poly, width = this.buffer)
         this.rast <- rasterize(this.poly.buffered, data.mask, background = 0)
         this.rast <- mask(this.rast, mask = data.mask, maskvalue = NA,
-                          filename = paste0(buffer.dir, this.code, ".tif"),
+                          filename = this.out.file,
                           overwrite = TRUE)
       })
       if (inherits(buffer.try, "try-error")) {
+        cli_process_failed()
         .write_logfile(
           out.log = paste0(this.species, " (", this.class,
                            ") failed. Buffer failed"),
@@ -409,14 +412,15 @@ buffer_iucn <- function(checklist,
           silent = TRUE)
         return(NULL)
       }
-    warnings()
-    cli_progress_done()
-    .write_logfile(
-      out.log = this.species,
-      logfile = logfile_success,
-      project.name = project.name,
-      open = "a",
-      silent = TRUE)
+      warnings()
+      .write_logfile(
+        out.log = this.species,
+        logfile = logfile_success,
+        project.name = project.name,
+        open = "a",
+        silent = TRUE)
+      cli_progress_done()
+    }
     NULL
   }
   if (has.cluster) doParallel::stopImplicitCluster()
@@ -437,7 +441,7 @@ buffer_iucn <- function(checklist,
   #### checklist -------------------------------------------------------------
   .check_checklist(checklist)
   
-
+  
   #### data.mask -------------------------------------------------------------
   .fun_testIfInherits(data.mask, "SpatRaster")
   
@@ -455,7 +459,7 @@ buffer_iucn <- function(checklist,
   
   #### nb.cpu -------------------------------------------------------  
   .fun_testIfPosInt(nb.cpu)
-
+  
   #### buffer.config -----------------------------------------------------------
   if (missing(buffer.config)) {
     stop("Please provide argument buffer.config, a named list with the distance used to buffer IUCN range, by taxonomic group")
