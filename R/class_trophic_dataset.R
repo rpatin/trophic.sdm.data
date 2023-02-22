@@ -860,7 +860,7 @@ setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
                 filter(inside_iucn) %>% 
                 mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
               g <- ggplot() +
-                geom_spatraster(data = mutate(data.mask, MaskNew5Km = as.character(MaskNew5Km))) +
+                geom_spatraster(data = mutate(data.mask, mask.grid = as.character(mask.grid))) +
                 geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                 scale_fill_manual(
                   "IUCN distribution",
@@ -972,7 +972,7 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
                                      this.prey.filtered, "/", this.prey)
                 
                 g <- ggplot() +
-                  geom_spatraster(data = mutate(data.mask, MaskNew5Km = as.character(MaskNew5Km))) +
+                  geom_spatraster(data = mutate(data.mask, mask.grid = as.character(mask.grid))) +
                   geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                   geom_tile(data = this.trophic.filtered, aes(x = x, y = y, fill = datatype)) +
                   scale_fill_manual(

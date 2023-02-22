@@ -148,7 +148,7 @@ prepare_dataset_gbif <- function(checklist,
           this.occurrence.df <- 
             this.occurrence.rast %>% 
             as.data.frame(cells = TRUE, na.rm = TRUE, xy = TRUE) %>% 
-            rename(presence = MaskNew5Km)
+            rename(presence = mask.grid)
           
           # add inside/outside IUCN range
           if (this.iucn == "none") {
