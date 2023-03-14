@@ -69,7 +69,8 @@ setClass("sampling_effort",
 ##' @importFrom methods new
 
 calc_sampling_effort <- function(checklist, folder.gbif, 
-                                 sampling.effort.config, data.mask,
+                                 sampling.effort.config,
+                                 filter.atlas = FALSE, data.mask,
                                  project.name, nb.cpu = 1){
   
   cli_h1("Calculate sampling effort")
@@ -78,6 +79,7 @@ calc_sampling_effort <- function(checklist, folder.gbif,
     checklist = checklist,
     folder.gbif = folder.gbif,
     sampling.effort.config = sampling.effort.config, 
+    filter.atlas = filter.atlas,
     data.mask = data.mask,
     project.name = project.name,
     nb.cpu = nb.cpu
@@ -132,14 +134,16 @@ calc_sampling_effort <- function(checklist, folder.gbif,
     this.effort.list <- foreach(this.species = list.species) %dopar% {
       # cli_progress_step(this.species)
       this.output <- load_gbif_data(species.name = this.species,
-                                    folder.gbif = folder.gbif)
+                                    folder.gbif = folder.gbif, 
+                                    filter.atlas = filter.atlas)
       this.code <- checklist$Code[which(checklist$SpeciesName == this.species)]
       if (!inherits(this.output,"data.frame")) {
         .write_logfile(
           out.log = paste0("Species ", this.species, " failed. Reason: ", this.output),
           logfile = "sampling.effort.failed.log",
           project.name = project.name,
-          open = "a"
+          open = "a",
+          silent = TRUE
         )
         return(NULL)
       } else {
@@ -198,13 +202,16 @@ calc_sampling_effort <- function(checklist, folder.gbif,
 ### Argument Check -----------------------------------
 
 .calc_sampling_effort.check.args <- function(checklist, folder.gbif, 
-                                             sampling.effort.config, data.mask,
+                                             sampling.effort.config, 
+                                             filter.atlas, data.mask,
                                              project.name, nb.cpu){
   .check_checklist(checklist)
   .fun_testIfInherits(folder.gbif, "character")
   .fun_testIfDirExists(folder.gbif)
   .fun_testIfPosInt(nb.cpu)
   
+  if (missing(filter.atlas)) filter.atlas <- FALSE
+  stopifnot(is.logical(filter.atlas))
   
   #### check config ------------------------------------------------------------
   config.argname <- deparse(substitute(sampling.effort.config))

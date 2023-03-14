@@ -50,7 +50,7 @@ map_effort <- function(project.name, vector_data, data.mask, suffix){
     # this.layer <- "Amphibia"
     for (this.layer in layer.names) {
       cli_progress_step(this.layer)
-      this.rast <- rast(paste0(project.name, "/sampling.effort_", this.layer, ".tif"))  
+      this.rast <- rast(paste0(project.name, "/sampling.effort.", this.layer, ".tif"))  
       this.mean <- extract(this.rast, vector_data, fun = "mean", na.rm = TRUE)
       this.vector <- vector_data
       this.vector$effort <- this.mean[, gsub(pattern = " ",

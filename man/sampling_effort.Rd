@@ -13,6 +13,7 @@ calc_sampling_effort(
   checklist,
   folder.gbif,
   sampling.effort.config,
+  filter.atlas = FALSE,
   data.mask,
   project.name,
   nb.cpu = 1

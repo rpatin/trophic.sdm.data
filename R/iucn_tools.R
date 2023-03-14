@@ -397,7 +397,9 @@ buffer_iucn <- function(checklist,
       # buffer ----------------------------------------------------
       buffer.try <- try({
         this.poly.buffered <- buffer(this.poly, width = this.buffer)
-        this.rast <- rasterize(this.poly.buffered, data.mask, background = 0)
+        this.rast <- rasterize(this.poly.buffered, data.mask, 
+                               background = 0,
+                               touches = TRUE)
         this.rast <- mask(this.rast, mask = data.mask, maskvalue = NA,
                           filename = this.out.file,
                           overwrite = TRUE)

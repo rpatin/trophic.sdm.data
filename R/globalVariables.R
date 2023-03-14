@@ -28,11 +28,13 @@ utils::globalVariables(names = c("Code",
                                  "ntot"))
 # load_gbif_data ----------------------------------------------------
 utils::globalVariables(names = c("X", "Y", "species", 
+                                 "coordinateUncertaintyInMeters",
                                  "coordinatePrecision",
                                  "distance_to_iucn"))
 
 # summary_conflict ----------------------------------------------------
 utils::globalVariables(names = c("X", "Y", "species",
+                                 "coordinateUncertaintyInMeters",
                                  "coordinatePrecision",
                                  "distance_to_iucn"))
 

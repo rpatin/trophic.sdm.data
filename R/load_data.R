@@ -14,9 +14,11 @@
 ##' @importFrom dplyr select
 ##' @importFrom cli cli_alert_warning
 
-load_gbif_data <- function(species.name, folder.gbif){
+load_gbif_data <- function(species.name, folder.gbif, filter.atlas, all.columns = FALSE){
   .load_gbif_data.check.args(species.name = species.name,
-                             folder.gbif = folder.gbif)
+                             folder.gbif = folder.gbif,
+                             filter.atlas = filter.atlas, 
+                             all.columns = all.columns)
   all.files <- list.files(path = folder.gbif, include.dirs = TRUE, recursive = TRUE)
   selected.files <- all.files[grepl(x = all.files, pattern = ".csv", fixed = TRUE)]
   selected.files <- selected.files[grepl(x = selected.files, pattern = species.name, fixed = TRUE)]
@@ -54,6 +56,7 @@ load_gbif_data <- function(species.name, folder.gbif){
     test.colnames <- try({
       .fun_testdfcolnames(output,
                           thiscolnames = c("species",
+                                           "coordinateUncertaintyInMeters",
                                            "coordinatePrecision", 
                                            "distance_to_iucn",
                                            "X",	"Y"))
@@ -77,15 +80,27 @@ load_gbif_data <- function(species.name, folder.gbif){
     if (nrow(output) == 0) {
       return("Error with Latitude/Longitude")
     } 
-    select(output, species, coordinatePrecision, distance_to_iucn, X, Y)
+    
+    if (filter.atlas) {
+      output <- filter(output,
+                       is.na(coordinateUncertaintyInMeters) |
+                         coordinateUncertaintyInMeters <= 5000)
+    }
+    
+    if (all.columns) return(output)
+    
+    select(output, species, coordinateUncertaintyInMeters, coordinatePrecision, distance_to_iucn, X, Y)
   }
 }
 
 
-.load_gbif_data.check.args <- function(species.name, folder.gbif){
+.load_gbif_data.check.args <- function(species.name, folder.gbif,
+                                       filter.atlas, all.columns){
   .fun_testIfInherits(species.name, "character")
   .fun_testIfInherits(folder.gbif, "character")
   .fun_testIfDirExists(folder.gbif)
+  stopifnot(is.logical(filter.atlas))
+  stopifnot(is.logical(all.columns))
   TRUE
 }
 
@@ -123,4 +138,113 @@ locate_iucn_distribution <- function(species.code, folder.iucn, filetype = ".tif
   .fun_testIfInherits(folder.iucn, "character")
   .fun_testIfDirExists(folder.iucn)
   TRUE
+}
+
+
+
+### load_data.trophic_dataset    --------------------------------------------------
+##'
+##' @rdname trophic_dataset
+##' @param x an object of class \code{trophic_dataset}
+##' @export
+##'
+
+
+setGeneric("load_data", def = function(x, ...) {
+  standardGeneric("load_data") 
+})
+
+##' @rdname trophic_dataset
+##' @export
+##' @importFrom cli cli_alert_success
+##' @param SpeciesName a \code{character}, a species name to retrieve data or 
+##' information
+##' @param Code a \code{character}, a species code to retrieve data or information
+##' @param type a \code{character}, the type of data to retrieve: trophic, trophic.raw
+##' occurrence
+
+setMethod('load_data', signature(x = 'trophic_dataset'),
+          function(x,
+                   SpeciesName,
+                   Code, 
+                   type = "trophic") {
+            SpeciesName <- .load_data.check.args(x = x,
+                                                 SpeciesName = SpeciesName,
+                                                 Code = Code,
+                                                 type = type)
+            if (type == "trophic") {
+              df <- fread(x@file.trophic.link[SpeciesName])
+            } else if (type == "trophic.raw") {
+              df <- fread(x@param.raw$file.trophic.raw.link[SpeciesName])
+            } else if (type == "occurrence") {
+              df <- fread(x@file.occurrence.link[SpeciesName])
+            }
+            df
+          })
+
+
+
+### load data argument check --------------------------------------------------
+.load_data.check.args <- function(x, SpeciesName, Code, type){
+  
+  if (missing(type)) {
+    type <- "trophic"
+    cli_alert_info('Retrieving trophic dataset')
+  }
+  
+  .fun_testIfIn(type, c("trophic","occurrence","trophic.raw"))
+  if (type == "trophic") {
+    summary.occ <- x@summary.predator
+  } else if (type == "trophic.raw") {
+    summary.occ <- x@param.raw$summary.predator.raw
+  } else if (type == "occurrence") {
+    summary.occ <- x@summary.occurrence
+  }
+  
+  if (!xor(missing(SpeciesName),missing(Code))) {
+    stop("Exactly one of SpeciesName or Code must be given as argument")
+  }
+  
+  
+  
+  if (!missing(Code)) {
+    listname <- summary.occ$SpeciesName
+    names(listname) <- summary.occ$Code
+    if (!Code %in% summary.occ$Code) {
+      stop(paste0("dataset for ", Code, " not found"))
+    }
+    SpeciesName <- listname[Code]
+  } 
+  
+  if (!missing(SpeciesName)) {
+    if (!SpeciesName %in% summary.occ$SpeciesName) {
+      stop(paste0("dataset for ", SpeciesName, " not found"))
+    }
+  }
+  return(SpeciesName)
+}
+
+
+
+## Load dataset ----------------------------
+##' @name load_dataset
+##' 
+##' @title Load trophic dataset
+##' 
+##' @description \code{load_dataset} loads a trophic dataset
+##' 
+##' @inheritParams gbif_outsider
+##' @return a \code{\link{trophic_dataset}} 
+##' @export
+
+load_dataset <- function(project.name){
+  .fun_testIfInherits(project.name, 'character')
+  .fun_testIfDirExists(project.name)
+  this.file <- paste0(project.name,"/",project.name,".trophic_dataset.rds")
+  if (file.exists(this.file)) {
+    return(readRDS(this.file))
+  } else {
+    cli_alert_danger("Dataset not found")
+    return(invisible(NULL))
+  }
 }

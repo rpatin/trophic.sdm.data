@@ -641,7 +641,7 @@ get_predator_summary <- function(this.trophic){
   # absence outside IUCN range
   absence_outside <- absence_tot - absence_inside
   prevalence <- presence/(presence+absence_tot)
-  nprey <- ncol(this.trophic)-7
+  nprey <- ncol(this.trophic) - 8
   return(
     data.frame(
       "SpeciesName" = first(this.trophic$SpeciesName),
@@ -671,15 +671,14 @@ get_predator_summary <- function(this.trophic){
 
 get_prey_summary <- function(this.trophic){
   list.prey <- colnames(this.trophic[,-(1:7)])
+  list.prey <- list.prey[-length(list.prey)]
   prey.summary <- foreach(this.prey = list.prey, .combine = 'rbind') %do% {
-    tmp_prevalence <- 
-      this.trophic %>% 
-      filter(presence == 1) %>% 
-      .[,..this.prey] 
+    
+    tmp_prevalence <- this.trophic[which(this.trophic$presence == 1), ..this.prey]
     prevalence_pred1 <- sum(tmp_prevalence)/nrow(tmp_prevalence)
-    prevalence <- sum(this.trophic[,..this.prey])/nrow(this.trophic[,..this.prey])
-    absence <- length(which(this.trophic[,..this.prey] == 0))
-    presence <- length(which(this.trophic[,..this.prey] == 1))
+    prevalence <- sum(this.trophic[ , ..this.prey])/nrow(this.trophic[, ..this.prey])
+    absence <- length(which(this.trophic[ , ..this.prey] == 0))
+    presence <- length(which(this.trophic[ , ..this.prey] == 1))
     data.frame(
       "SpeciesName" = first(this.trophic$SpeciesName),
       "Code" = first(this.trophic$Code),

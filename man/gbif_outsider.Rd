@@ -14,6 +14,7 @@ detect_gbif_outsider(
   checklist,
   folder.gbif,
   folder.iucn,
+  filter.atlas = FALSE,
   project.name,
   nb.cpu = 1
 )

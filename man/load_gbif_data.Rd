@@ -4,7 +4,7 @@
 \alias{load_gbif_data}
 \title{Load gbif data}
 \usage{
-load_gbif_data(species.name, folder.gbif)
+load_gbif_data(species.name, folder.gbif, filter.atlas, all.columns = FALSE)
 }
 \arguments{
 \item{species.name}{a \code{character} corresponding to the species name}

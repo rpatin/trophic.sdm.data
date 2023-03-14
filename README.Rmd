@@ -20,15 +20,17 @@ library(badger)
 
 # News 
 
-## v.0.0.3
-
+## v.0.0.4
 ### Upcoming features
-- support for filtering atlas data & multiple resolutions
+- support for multiple resolutions
 - workflow for IUCN
 - evaluations
-- subsampling
 - calculation of aggregated prey metrics
 - splitting of trophic group in metaweb
+
+## v.0.0.3
+- subsampling of absences outside IUCN distribution
+- support for filtering atlas data 
 
 ## v.0.0.2 - Bugfix Release (22/02/2023)
 

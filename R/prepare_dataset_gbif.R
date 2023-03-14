@@ -17,6 +17,7 @@ prepare_dataset_gbif <- function(checklist,
                                  data.mask,
                                  project.name,
                                  min.gbif,
+                                 filter.atlas,
                                  buffer.config,
                                  quantile.absence.certain,
                                  prop.prey.certain,
@@ -35,6 +36,7 @@ prepare_dataset_gbif <- function(checklist,
     data.mask = data.mask,
     project.name = project.name,
     min.gbif = min.gbif,
+    filter.atlas = filter.atlas,
     buffer.config = buffer.config,
     quantile.absence.certain = quantile.absence.certain,
     prop.prey.certain = prop.prey.certain,
@@ -52,6 +54,7 @@ prepare_dataset_gbif <- function(checklist,
   ## initialize variables -----------------------------------------------------
   param = list("param.filter" = param.filter,
                "min.gbif" = min.gbif,
+               "filter.atlas" = filter.atlas,
                "buffer.config" = buffer.config,
                "species.buffer" = species.buffer,
                "quantile.absence.certain" = quantile.absence.certain,
@@ -81,7 +84,8 @@ prepare_dataset_gbif <- function(checklist,
     cli_progress_step(this.species)
     this.code <- listcode[this.species]
     this.output <- load_gbif_data(species.name = this.species,
-                                  folder.gbif = folder.gbif)
+                                  folder.gbif = folder.gbif, 
+                                  filter.atlas = filter.atlas)
     this.summary <- "failed"
     this.status <- "failed"
     this.iucn <- "failed"
@@ -326,7 +330,8 @@ prepare_dataset_gbif <- function(checklist,
         this.trophic <- 
           this.occurrence %>% 
           filter(status == "certain") %>% 
-          select(-status)
+          select(-status) %>% 
+          mutate(subsample = TRUE)
         fwrite(this.trophic, this.trophic.file)
       } else {
         ### with prey ---------------------
@@ -355,22 +360,26 @@ prepare_dataset_gbif <- function(checklist,
           right_join(this.occurrence, this.prey.pivot, 
                      by = c("cell","x","y")) %>% 
           filter(status == "certain") %>% 
-          select(-status)
+          select(-status) %>% 
+          mutate(subsample = TRUE)
         fwrite(this.trophic, this.trophic.file)
       }
     })
-    if (inherits(step2.try, "try-error")){
+    if (inherits(step2.try, "try-error")) {
       cli_process_failed()
       .write_logfile(
         out.log = paste0("Species: ", this.species, 
-                         ". Status: Failed"),
+                         ". Status: Joining dataset failed"),
         logfile = logfile_step2,
         project.name = project.name,
         open = "a",
         silent = TRUE)
     } 
+    
+    # if (this.species == "Accipiter nisus") browser()
     ### Summary --------------------------------------------------------------
     summary.try <- try({
+      # if(this.species == "Rana arvalis") stop()
       # predator summary
       pred.summary <-  get_predator_summary(this.trophic)
       # prey summary
@@ -394,6 +403,7 @@ prepare_dataset_gbif <- function(checklist,
       filtered.prey.list <- list(filtered.prey)
       names(filtered.prey.list) <- this.species
     })
+    # if (this.species == "Accipiter nisus") browser()
     
     if (inherits(summary.try, "try-error")) {
       .write_logfile(
@@ -404,7 +414,12 @@ prepare_dataset_gbif <- function(checklist,
         open = "a",
         silent = TRUE)
       cli_process_failed()
-      return(NULL) 
+      return(list("SpeciesName" = this.species,
+                  "Code" = this.code,
+                  "trophic.file" = NULL,
+                  "pred.summary" = NULL,
+                  "prey.summary" = NULL,
+                  "filtered.prey" = NULL))
     } else {
       .write_logfile(
         out.log = paste0("Species: ", this.species, 
@@ -442,7 +457,8 @@ prepare_dataset_gbif <- function(checklist,
   
   summary.filter <- occurrence.summary %>% 
     rename(presence_unfiltered = presence) %>% 
-    right_join(summary.predator) %>% 
+    right_join(summary.predator, 
+               by = join_by(SpeciesName, Code)) %>% 
     mutate(presence.filtered = presence_unfiltered - presence,
            absence.filtered.inside = absence.inside.certain - absence_inside,
            absence.filtered.outside = absence.outside - absence_outside) %>% 
@@ -453,7 +469,7 @@ prepare_dataset_gbif <- function(checklist,
            presence_unfiltered, absence.outside, absence.inside.certain, absence.inside.uncertain,
            presence.filtered, absence.filtered.inside, absence.filtered.outside, nprey.filtered, nprey.unfiltered, nprey) %>% 
     rename(presence = presence_unfiltered) %>% 
-    left_join(checklist)
+    left_join(checklist, by = join_by(SpeciesName, Code))
   
   
   
@@ -481,7 +497,6 @@ prepare_dataset_gbif <- function(checklist,
   names(kept.prey) <- listname
   
   filtered.prey <- sapply(species.trophic.list, function(x) x$filtered.prey)
-  
   output <- new('trophic_dataset')
   output@summary.filter <- summary.filter
   output@summary.occurrence <- occurrence.summary
@@ -501,6 +516,7 @@ prepare_dataset_gbif <- function(checklist,
       "summary.predator.raw" = summary.predator,
       "summary.prey.raw" = summary.prey,
       "file.trophic.raw.link" = file.trophic.link,
+      "file.occurrence.raw.link" = file.occurrence.link,
       "metaweb" = metaweb,
       "checklist" = checklist,
       "kept.species.raw" = kept.species,
@@ -513,6 +529,7 @@ prepare_dataset_gbif <- function(checklist,
   output@project.name <- project.name
   output@sampling.effort <- sampling.effort
   output@data.mask <- wrap(data.mask)
+  saveRDS(output, file = paste0(project.name,"/",project.name,".trophic_dataset.rds"))
   
   ## Subsample & Filter output ------------------------------------------------
   cli_h1("Filtering & Subsampling dataset")
@@ -523,17 +540,16 @@ prepare_dataset_gbif <- function(checklist,
   
   cli_progress_step("Subsample dataset")
   output <- subsample(output,
-                      subsample.min.prevalence = param.filter$subsample.min.prevalence,
-                      subsample.max.absence = param.filter$subsample.max.absence)
+                      subsample.method = param.filter$subsample.method,
+                      subsample.regions = param.filter$subsample.regions,
+                      subsample.min.absence.outside = param.filter$subsample.min.absence.outside,
+                      subsample.max.absence.outside = param.filter$subsample.max.absence.outside,
+                      subsample.prop.outside = param.filter$subsample.prop.outside)
   
   cli_progress_step("Filter Prey")
   output <- filter_prey(output,
                         min.prevalence.prey = param.filter$min.prevalence.prey,
                         min.absence.prey = param.filter$min.absence.prey)
-  
-  
-  ## write and return results ------------------------------------------------
-  saveRDS(output, file = paste0(project.name,"/",project.name,".trophic_dataset.rds"))
   output
 } 
 
@@ -549,6 +565,7 @@ prepare_dataset_gbif <- function(checklist,
                                              data.mask,
                                              project.name,
                                              min.gbif,
+                                             filter.atlas,
                                              buffer.config,
                                              quantile.absence.certain,
                                              prop.prey.certain,
@@ -580,12 +597,19 @@ prepare_dataset_gbif <- function(checklist,
   .fun_testIfInherits(project.name, "character")
   if (!dir.exists(project.name)) dir.create(project.name, recursive = TRUE)
   
-  #### min.gbif
+  #### min.gbif & filter.atlas
   if (missing(min.gbif)) {
     min.gbif <- 25
     cli_alert_info("Set default min.gbif = 25")
   } else {
     .fun_testIfPosInt(min.gbif)
+  }
+  
+  if (missing(filter.atlas)) {
+    filter.atlas <- TRUE
+    cli_alert_info("Set filter.atlas = TRUE")
+  } else {
+    stopifnot(is.logical(filter.atlas))
   }
   
   #### buffer.config -----------------------------------------------------------
@@ -685,6 +709,7 @@ prepare_dataset_gbif <- function(checklist,
     "data.mask" = data.mask,
     "project.name" = project.name,
     "min.gbif" = min.gbif,
+    "filter.atlas" = filter.atlas,
     "buffer.config" = buffer.config,
     "species.buffer" = species.buffer,
     "quantile.absence.certain" = quantile.absence.certain,

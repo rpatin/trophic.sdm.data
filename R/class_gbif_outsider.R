@@ -74,6 +74,7 @@ setClass("gbif_outsider",
 
 
 detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn, 
+                                 filter.atlas = FALSE,
                                  project.name, nb.cpu = 1){
   
   cli_h1("Detect gbif outsider")
@@ -81,6 +82,7 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   .detect_gbif_outsider.check.args(checklist = checklist,
                                    folder.gbif = folder.gbif,
                                    folder.iucn = folder.iucn,
+                                   filter.atlas = filter.atlas,
                                    project.name = project.name,
                                    nb.cpu = nb.cpu)
   
@@ -96,7 +98,8 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
   output.outsider <- foreach(this.species = names(listcode)) %dopar% {
     cli_progress_step(this.species)
     this.output <- load_gbif_data(species.name = this.species,
-                                  folder.gbif = folder.gbif)
+                                  folder.gbif = folder.gbif, 
+                                  filter.atlas = filter.atlas)
     if (!inherits(this.output,"data.frame")) {
       cli_progress_done()
       return(list("status" = "failed",
@@ -250,13 +253,15 @@ detect_gbif_outsider <- function(checklist, folder.gbif, folder.iucn,
 ### Argument Check -----------------------------------
 
 .detect_gbif_outsider.check.args <- function(checklist, folder.gbif, folder.iucn,
-                                             project.name, nb.cpu){
+                                             filter.atlas, project.name, nb.cpu){
   .check_checklist(checklist)
   .fun_testIfInherits(folder.gbif, "character")
   .fun_testIfDirExists(folder.gbif)
   .fun_testIfInherits(folder.iucn, "character")
   .fun_testIfDirExists(folder.iucn)
   .fun_testIfPosInt(nb.cpu)
+  if (missing(filter.atlas)) filter.atlas <- FALSE
+  stopifnot(is.logical(filter.atlas))
   TRUE
 }
 
