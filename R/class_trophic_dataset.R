@@ -830,6 +830,76 @@ setMethod('show', signature('param_trophic'),
             invisible(NULL)
           })
 
+## --------------------------------------------------------------------------- #
+# 7. trophic_species         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name trophic_species
+##' @aliases trophic_species-class
+##' @author Remi Patin
+##'
+##' @title Status of each species within a \code{\link{trophic_dataset}}
+##'
+##' @description Class contained within \code{\link{trophic_dataset}}. A
+##'   \code{trophic_species} object contains a set of information on the different
+##'   species that went through the workflow:
+##'   \itemize{
+##'   \item the species kept in the final dataset
+##'   \item the species filtered out through the workflow
+##'   \item the prey filtered out for each predator
+##'   \item the method used for each species kept (IUCN or gbif)
+##'   \item whether data was freshly extracted or reused from a previous extraction
+##'   }
+##'
+##' @slot kept a named \code{character} vector with all species kept and the method used
+##' @slot filtered a named \code{character} vector with all species removed 
+##' as well as the motivation of removal
+##' @slot kept.prey a named \code{list} with the prey kept for each species
+##' @slot filtered.prey a named \code{list} vector with the prey removed for 
+##' each species as well as the motivation of removal
+##' @slot fresh a named \code{logical} vector. For each species wether extraction
+##' was freshly done or not
+
+
+## 7.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("trophic_species",
+         representation(kept = "character",
+                        filtered = "character",
+                        kept.prey = "list",
+                        filtered.prey = "list",
+                        fresh = "character"),
+         validity = function(object){
+           .fun_testIfInherits(names(object@kept), "character")
+           .fun_testIfInherits(names(object@filtered), "character")
+           .fun_testIfInherits(names(object@kept.prey), "character")
+           .fun_testIfInherits(unlist(object@kept.prey), "character")
+           .fun_testIfInherits(names(object@filtered.prey), "character")
+           .fun_testIfInherits(unlist(object@filtered.prey), "character")
+           .fun_testIfInherits(names(object@fresh), "character")
+           TRUE
+         })
+
+
+## 7.2 Methods -------------------------------------------------------------
+### show.trophic_species    --------------------------------------------------
+##'
+##' @rdname trophic_species
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{trophic_species}
+##' @importFrom cli cli_h1 cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('trophic_species'),
+          function(object)
+          {
+            cli_h3("List of species used")
+            cli_li("{length(object@kept)} species kept, {length(object@filtered)} filtered")
+            cli_li("{length(unlist(object@kept.prey))} predator-prey interactions kept, {length(unlist(object@filtered.prey))} filtered")
+            invisible(NULL)
+          })
+
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
