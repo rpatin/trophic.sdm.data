@@ -316,6 +316,254 @@ setMethod('show', signature('backup_iucn'),
           })
 
 
+## --------------------------------------------------------------------------- #
+# 4. param_gbif         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name param_gbif
+##' @aliases param_gbif-class
+##' @author Remi Patin
+##'
+##' @title Parameters for gbif data extraction
+##'
+##' @description Class contained within a \code{\link{param_trophic}} object. A
+##'   \code{param_gbif} object contains the set of parameters used to 
+##'   extract gbif occurrences. It contains:
+##'  \itemize{
+##'   \item whether gbif data were ever used
+##'   \item the folder with gbif data
+##'   \item the minimum number of gbif occurrences 
+##'   \item whether atlas data should be filtered out (through column 
+##'   \code{coordinateUncertaintyInMeters})
+##'   \item The configuration for iucn buffer
+##'   \item The folder with buffered IUCN ranges
+##'   \item The quantile of sampling effort below which a species absence is
+##'   considered as uncertain
+##'   \item The minimum proportion of prey occurrence considered as certain for
+##'   a raster cell to be included in the species dataset.
+##'   \item The value given to uncertain absences in cells
+##'   where more than \code{prop.prey.certain} prey are considered as certain.
+##'   \item The parameter for IUCN backup (whether IUCN data should be used when
+##'   gbif data are not sufficient)
+##'   }
+##'
+##' @slot use.gbif a \code{logical}, whether gbif was used or not
+##' @slot folder.gbif a \code{character}: folders in which gbif data are stored
+##' @slot min.gbif a \code{integer}, the minimum number of gbif occurrences
+##' @slot filter.atlas a \code{booelan}, whether atlas data should be filtered
+##'  out (through column \code{coordinateUncertaintyInMeters})
+##' @slot buffer.config a \code{list}, the configuration for iucn buffer
+##' @slot species.buffer a named \code{list} with the buffer associated to each species
+##' @slot folder.iucn.buffer  a \code{character}, folder in which IUCN range
+##' are stored as raster files.
+##' @slot quantile.absence.certain a \code{numeric} (\emph{default}
+##'   \code{0.1}), between 0 and 1. The quantile of sampling effort below which
+##'   a species absence is considered as uncertain
+##' @slot prop.prey.certain a \code{numeric} (\emph{default} \code{0.8}),
+##'   between 0 and 1. The minimum proportion of prey occurrence considered as
+##'   certain for a raster cell to be included in the species dataset.
+##' @slot uncertain.value a \code{integer} (\code{0} or \code{1} ;
+##'   \emph{default} \code{0}). The value given to uncertain absences in cells
+##'   where more than \code{prop.prey.certain} prey are considered as certain.
+##' @slot backup.iucn a \code{\link{backup_iucn}} object
+##' @slot sampling.effort a \code{sampling_effort} object describing the sampling
+##' effort associated to all taxa.
+
+
+## 4.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("param_gbif",
+         representation(
+           use.gbif = "logical",
+           folder.gbif = "character",
+           min.gbif = "numeric",
+           filter.atlas = "logical",
+           buffer.config = "list",
+           species.buffer = "list",
+           folder.iucn.buffer = "character",
+           sampling.effort = "sampling_effort",
+           quantile.absence.certain = "numeric",
+           prop.prey.certain = "numeric",
+           uncertain.value = "numeric",
+           backup.iucn = "backup_iucn"),
+         validity = function(object){
+           .fun_testIfDirExists(folder.gbif)
+           .fun_testIfPosInt(object@min.gbif)
+           .fun_testIfPosInt(object@min.threshold.effort)
+           .fun_testIf01(object@quantile.absence.certain)
+           .fun_testIf01(object@prop.prey.certain)
+           .fun_testIfIn(object@uncertain.value, c(0,1))
+           .fun_testIfPosNum(unlist(object@buffer.config))
+           .fun_testIfInherits(names(object@buffer.config), "character")
+           .fun_testIfDirExists(folder.iucn.buffer)
+           TRUE
+         })
+
+
+
+## 4.2 Constructor ------------------------------------------------------------
+##' 
+##' @rdname param_gbif
+##' @param ... additionnal parameters given to \code{\link{set_backup_iucn}}
+##' @export
+##' 
+
+set_param_gbif <- function(use.gbif,
+                           folder.gbif,
+                           min.gbif,
+                           filter.atlas,
+                           buffer.config,
+                           folder.iucn.buffer,
+                           sampling.effort,
+                           quantile.absence.certain,
+                           prop.prey.certain,
+                           uncertain.value,
+                           backup.iucn,
+                           ...) {
+  cli_h2("Set gbif parameters")
+  out <- new("param_gbif")
+  
+  #  gbif sampling activated by default
+  if (missing(use.gbif)) {
+    cli_alert_info("gbif sampling activated")
+    use.gbif <- TRUE
+  }
+  if (!use.gbif) cli_alert_info("no gbif sampling")
+  out@use.gbif <- use.gbif
+  
+  
+  # folder.gbif
+  if (missing(folder.gbif)) {
+    if (use.gbif) { 
+      cli_alert_danger("Please provide folder.gbif")
+      stop("Missing folder.gbif")
+    }
+  } else {
+    out@folder.gbif <- folder.gbif
+  }
+  
+  # min.gbif
+  if (missing(min.gbif)) {
+    out@min.gbif <- 25
+    if (use.gbif) cli_alert_info("Minimum number of gibf occurrences set to 25")
+  } else {
+    out@min.gbif <- min.gbif
+  }
+  
+  # filter.atlas
+  if (missing(filter.atlas)) {
+    out@filter.atlas <- TRUE
+    if (use.gbif) cli_alert_info("filter.atlas set to TRUE")
+  } else {
+    out@filter.atlas <- filter.atlas
+  }
+  
+  # buffer.config
+  if (missing(buffer.config)) {
+    if (use.gbif) { 
+      cli_alert_danger("Please provide argument buffer.config, a named list with the distance used to buffer IUCN range, by taxonomic group")
+      stop("Missing buffer.config")
+    }
+  } else {
+    out@buffer.config <- buffer.config
+  }
+  
+  # sampling.effort
+  if (missing(sampling.effort)) {
+    if (use.gbif) { 
+      cli_alert_danger("Please provide sampling.effort")
+      stop("Missing sampling.effort")
+    }
+  } else {
+    out@sampling.effort <- sampling.effort
+  }
+  
+  # folder.iucn.buffer
+  
+  if (missing(folder.iucn.buffer)) {
+    if (use.gbif) { 
+      cli_alert_danger("Please provide folder.iucn.buffer")
+      stop("Missing folder.iucn.buffer")
+    }
+  } else {
+    out@folder.iucn.buffer <- folder.iucn.buffer
+  }
+  
+  # quantile.absence.certain
+  if (missing(quantile.absence.certain)) {
+    out@quantile.absence.certain <- 0.1
+    if (use.gbif) cli_alert_info("quantile.absence.certain set to 10%")
+  } else {
+    out@quantile.absence.certain <- quantile.absence.certain
+  }
+  
+  # prop.prey.certain
+  if (missing(prop.prey.certain)) {
+    out@prop.prey.certain <- 0.8
+    if (use.gbif) cli_alert_info("prop.prey.certain set to 80%")
+  } else {
+    out@prop.prey.certain <- prop.prey.certain
+  }
+  
+  # uncertain.value
+  if (missing(uncertain.value)) {
+    out@uncertain.value <- 0
+    if (use.gbif) cli_alert_info("uncertain.value set to 0")
+  } else {
+    out@uncertain.value <- uncertain.value
+  }
+  # backup.iucn
+  if (missing(backup.iucn)) {
+    if (use.gbif) {
+      out@backup.iucn <- set_backup_iucn(...)
+    }
+  } else {
+    out@backup.iucn <- backup.iucn
+  }
+  validObject(out)
+  out
+}
+
+
+## 4.3 Methods -------------------------------------------------------------
+### show.param_gbif    --------------------------------------------------
+##'
+##' @rdname param_gbif
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{param_gbif}
+##' @importFrom cli cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('param_gbif'),
+          function(object)
+          {
+            if (!object@use.gbif) {
+              cli_alert_warning("No gbif data used")
+            } else {
+              buffer.text <-
+                paste0(
+                  sapply(seq_along(object@buffer.config), function(i){
+                    paste0(names(object@buffer.config)[i], ' (', object@buffer.config[[i]], 'km)')
+                  }), 
+                  collapse = ', ')
+              
+              cli_h2("gbif data configuration")
+              cli_h3("data folder")
+              cli_li("Folder with gbif data: {object@folder.gbif}")
+              cli_li("Folder with IUCN buffered distribution: {object@folder.iucn.buffer}")
+              cli_h3("parameters")
+              cli_li("Quantile to consider absences as certain = {object@quantile.absence.certain}")
+              cli_li("Proportion of prey required as certain = {object@prop.prey.certain}")
+              cli_li("Values filled when prey are uncertain = {object@uncertain.value}")
+              cli_li("Minimum number of occurrences required = {object@min.gbif}")
+              cli_li("Filtering of atlas data = {object@filter.atlas}")
+              cli_li("IUCN buffer configuration: {buffer.text}")
+              show(object@backup.iucn)
+              show(object@sampling.effort)
+            }
+            invisible(NULL)
+          })
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
