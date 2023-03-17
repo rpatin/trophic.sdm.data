@@ -1,6 +1,88 @@
 ## --------------------------------------------------------------------------- #
 # 1. trophic_dataset         ---------------------------------------------------
+# 1. trophic_summary         ---------------------------------------------------
 ## --------------------------------------------------------------------------- #
+
+##' @name trophic_summary
+##' @aliases trophic_summary-class
+##' @author Remi Patin
+##'
+##' @title Summary of trophic dataset
+##'
+##' @description Class contained within \code{\link{trophic_dataset}}. A
+##'   \code{trophic_summary} object contains a set of summary \code{data.frame} 
+##'   for the \code{\link{trophic_dataset}} object:
+##'   \itemize{
+##'   \item occurrence summary
+##'   \item final dataset summary
+##'   \item prey summary
+##'   \item filtered species summary
+##'   \item protected species summary
+##'   \item patrimonial species summary
+##'   }
+##'
+##' @slot occurrence a \code{data.frame} with the list of species and 
+##' the total number of presence and absence in the occurrence dataset extracted
+##' from gbif and independently of prey cell selection.
+##' @slot trophic a \code{data.frame} with a summary of the actual 
+##' trophic dataset, i.e. list of species and the total number of presence 
+##' and absence inside/outside IUCN range as well as additional information 
+##' such as the number of prey.
+##' @slot prey a \code{data.frame} with a summary of occurrence and 
+##' prevalence for all prey associated to a predator dataset.
+##' @slot filtered a \code{data.frame} with a summary of species that were 
+##' filtered throughout the data generation
+##' @slot protected a \code{data.frame} with a summary of species protected by 
+##' the EU habitat directive
+##' @slot patrimonial a \code{data.frame} with a summary of species listed as 
+##' patrimonial species by the french INPN
+
+## 1.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("trophic_summary",
+         representation(occurrence = "data.frame",
+                        trophic = "data.frame",
+                        prey = "data.frame",
+                        filtered = "data.frame",
+                        protected = "data.frame",
+                        patrimonial = "data.frame"),
+         validity = function(object){
+           TRUE
+         })
+
+
+## 1.2 Methods -------------------------------------------------------------
+### show.trophic_summary    --------------------------------------------------
+##'
+##' @rdname trophic_summary
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{trophic_summary}
+##' @importFrom cli cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('trophic_summary'),
+          function(object)
+          {
+            n.species <- nrow(object@occurrence)
+            if (n.species == 0) {
+              cli_alert_warning("Empty trophic_summary object")
+            } else {
+              n.trophic <- nrow(object@trophic)
+              n.prey <- nrow(object@prey)
+              n.filtered <- nrow(object@filtered)
+              n.protected <- nrow(object@protected)
+              cli_h3("trophic_summary object")
+              cli_text("Summary data.frame for:")
+              cli_li("Occurrence data for {n.species} species")
+              cli_li("Trophic data for {n.trophic} species")
+              cli_li("{n.prey} predator-prey interactions")
+              cli_li("{n.filtered} removed species")
+              cli_li("{n.protected} protected, endangered or patrimonial species")
+            }
+            
+            invisible(NULL)
+          })
 
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
