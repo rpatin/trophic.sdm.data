@@ -744,6 +744,92 @@ the data inside IUCN range and a maximum of \\
             }
             invisible(NULL)
           })
+## --------------------------------------------------------------------------- #
+# 6. param_trophic         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name param_trophic
+##' @aliases param_trophic-class
+##' @author Remi Patin
+##'
+##' @title Parameters of a trophic_dataset
+##'
+##' @description Class contained within \code{\link{trophic_dataset}}. A
+##'   \code{param_trophic} object contains the set of parameters used to 
+##'   generate the dataset:
+##'   \itemize{
+##'   \item the final and raw checklist of species 
+##'   \item the final and raw metaweb 
+##'   \item the set of parameters used for gbif extraction
+##'   \item the folder with IUCN ranges
+##'   \item the set of parameters used for subsampling
+##'   }
+##'
+##' @slot checklist a \code{data.frame} with information on all species 
+##'   that remain after filtering of species.
+##' @slot metaweb a \code{data.frame} with all species interactions 
+##' that remain after filtering of species and prey.
+##' @slot checklist.raw a \code{data.frame} with original information on all
+##'   species
+##' @slot metaweb.raw a \code{data.frame} with all original species interactions
+##' @slot param.gbif a \code{\link{param_gbif}} object with all parameters used
+##'   to extract gbif data
+##' @slot param.subsampling a \code{\link{param_subsampling}} object with all
+##'   parameters used for subsampling
+##' @slot folder.iucn  a \code{character}, folder in which IUCN range
+##' are stored as raster files.
+
+
+## 6.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("param_trophic",
+         representation(checklist = "data.frame",
+                        metaweb = "data.frame",
+                        checklist.raw = "data.frame",
+                        metaweb.raw = "data.frame",
+                        param.gbif = "param_gbif",
+                        param.subsampling = "param_subsampling",
+                        folder.iucn = "character"),
+         validity = function(object){
+           .check_checklist(object@checklist)
+           .check_checklist(object@checklist.raw)
+           .check_metaweb(object@metaweb)
+           .check_metaweb(object@metaweb.raw)
+           .fun_testIfDirExists(folder.iucn)
+           TRUE
+         })
+
+## 6.2 Methods -------------------------------------------------------------
+### show.param_trophic    --------------------------------------------------
+##'
+##' @rdname param_trophic
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{param_trophic}
+##' @importFrom cli cli_h1 cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('param_trophic'),
+          function(object)
+          {
+            cli_h1("Parameters for extracting trophic dataset")
+            intro.text <- paste0("Modeling ", nrow(object@checklist), " species with ",
+                                 nrow(object@metaweb), " predator-prey interactions,")
+            if(object@param.gbif@use.gbif) {
+             if(object@param.gbif@backup.iucn@do.backup){
+               cli_alert_info("{intro.text} using gbif data if possible, IUCN if not.")
+             }  else {
+              cli_alert_info("{intro.text} using only gbif data")
+             }
+            } else {
+              cli_alert_info("{intro.text} using only IUCN data")
+            }
+            cli_li("Folder with IUCN range data: {object@folder.iucn}")
+            show(object@param.gbif)
+            show(object@param.subsampling)
+            invisible(NULL)
+          })
+
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
