@@ -151,6 +151,171 @@ setMethod('show', signature('trophic_files'),
             invisible(NULL)
           })
 
+## --------------------------------------------------------------------------- #
+# 3. backup_iucn         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name backup_iucn
+##' @aliases backup_iucn-class
+##' @author Remi Patin
+##'
+##' @title Parameters for IUCN backup
+##'
+##' @description Class contained within a \code{\link{param_gbif}} object. A
+##'   \code{iucn_backup} object contains the set of parameters used to 
+##'   decide whether gbif data should be dropped to use iucn data instead:
+##'   \itemize{
+##'   \item whether backup was activated or not
+##'   \item a minimum number of gbif occurrences 
+##'   \item a minimum sampling effort threshold
+##'   \item a maximum proportion of uncertain cells within its own range
+##'   \item a maximum proportion of uncertain cells within the predator IUCN range 
+##'   \item the quantile to aggregate proportion accross predator
+##'   }
+##'
+##' @slot do.backup a \code{logical} whether backup was activated or not
+##' @slot min.occurrence a \code{integer}, the minimum number of gbif occurrences
+##' @slot min.threshold.effort a \code{integer}, the minimum sampling effort
+##'   threshold
+##' @slot max.prop.own a \code{numeric}, the maximum proportion of uncertain
+##'   cells within its own range
+##' @slot max.prop.predator  a \code{numeric}, the maximum proportion of
+##'   uncertain cells within its predators range
+##' @slot max.prop.predator.outside  a \code{numeric}, the maximum proportion of
+##'   uncertain cells outside its predators range
+##' @slot quantile.prop.predator a \code{numeric}, used to aggregate information
+##' accross several predators.
+
+
+## 3.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("backup_iucn",
+         representation(do.backup = "logical",
+                        min.occurrence = "numeric",
+                        min.threshold.effort = "numeric",
+                        max.prop.own = "numeric",
+                        max.prop.predator = "numeric",
+                        max.prop.predator.outside = "numeric",
+                        quantile.prop.predator = "numeric"),
+         validity = function(object){
+           .fun_testIfPosInt(object@min.occurrence)
+           .fun_testIfPosInt(object@min.threshold.effort)
+           .fun_testIf01(object@max.prop.own)
+           .fun_testIf01(object@max.prop.predator)
+           .fun_testIf01(object@max.prop.predator.outside)
+           .fun_testIf01(object@quantile.prop.predator)
+           TRUE
+         })
+
+## 3.2 Constructor ------------------------------------------------------------
+##' 
+##' @rdname backup_iucn
+##' @export
+##' 
+
+set_backup_iucn <- function(do.backup,
+                            min.occurrence,
+                            min.threshold.effort,
+                            max.prop.own,
+                            max.prop.predator,
+                            max.prop.predator.outside,
+                            quantile.prop.predator) {
+  
+  out <- new("backup_iucn")
+  cli_h3("Setup IUCN backup")
+  
+  # do.backup deactivated by default
+  if (missing(do.backup)) {
+    cli_alert_info("IUCN backup deactivated")
+    do.backup <- FALSE
+  }
+  out@do.backup <- do.backup
+  
+  # min.occurrence
+  if (missing(min.occurrence)) {
+    if (do.backup) cli_alert_info("Minimum number of occurences set to 25")
+    out@min.occurrence <- 25
+  } else {
+    out@min.occurrence <- min.occurrence
+  }
+  
+  # min.threshold.effort
+  if (missing(min.threshold.effort)) {
+    out@min.threshold.effort <- 2
+    if (do.backup) cli_alert_info("Minimum effort threshold set to 2")
+  } else {
+    out@min.threshold.effort <- min.threshold.effort
+  }
+  
+  # max.prop.own
+  if (missing(max.prop.own)) {
+    if (do.backup) cli_alert_info("Max proportion of uncertain whithin its range set to 99%")
+    out@max.prop.own <- 0.99
+  } else {
+    out@max.prop.own <- max.prop.own
+  }
+  
+  # max.prop.predator
+  if (missing(max.prop.predator)) {
+    if (do.backup) cli_alert_info("Max proportion of uncertain whithin its  predators\\
+                               range set to 99%")
+    out@max.prop.predator <- 0.99
+  } else {
+    out@max.prop.predator <- max.prop.predator
+  }
+  
+  # max.prop.predator.outside
+  if (missing(max.prop.predator.outside)) {
+    if (do.backup) cli_alert_info("Max proportion of uncertain outside its  predators\\
+                               range set to 99%")
+    out@max.prop.predator.outside <- 0.99
+  } else {
+    out@max.prop.predator.outside <- max.prop.predator.outside
+  }
+  
+  # quantile.prop.predator
+  if (missing(quantile.prop.predator)) {
+    out@quantile.prop.predator <- 1
+    if (do.backup) cli_alert_info("Quantile used to aggregate predator information\\
+                               set to 100% (maximum value)")
+  } else {
+    out@quantile.prop.predator <- quantile.prop.predator
+  }
+  
+  validObject(out)
+  
+  out
+}
+
+## 3.3 Methods -------------------------------------------------------------
+### show.backup_iucn    --------------------------------------------------
+##'
+##' @rdname backup_iucn
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{backup_iucn}
+##' @importFrom cli cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('backup_iucn'),
+          function(object)
+          {
+            if (!object@do.backup) {
+              cli_alert_warning("No IUCN Backup")
+            } else {
+              cli_h3("IUCN Backup Configuration")
+              cli_text("gbif data are replace by IUCN data for species with:")
+              cli_li("gbif rasterized occurrences are < {object@min.occurrence}")
+              cli_li("threshold to consider absences as certain < {object@min.threshold.effort}")
+              cli_li("proportion of uncertain absences within IUCN range > {object@max.prop.own}")
+              cli_li("proportion of uncertain absences within its predator IUCN range > {object@max.prop.predator}")
+              cli_li("proportion of uncertain absences outside its predator IUCN range > {object@max.prop.predator.outside}")
+              cli_alert_info("quantile to aggregate predator information = {object@quantile.prop.predator}")
+            }
+            invisible(NULL)
+          })
+
+
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
