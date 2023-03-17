@@ -45,13 +45,17 @@ setClass("sampling_effort",
                         config = 'list',
                         species.layer = 'list',
                         checklist = "data.frame",
-                        project.name = 'character'),
+                        project.name = 'character',
+                        filled = 'logical'),
+         prototype(filled = FALSE),
          validity = function(object){ 
-           .check_checklist(object@checklist)
-           .fun_testIfInherits(object@project.name, "character")
-           .fun_testIfInherits(object@data, "PackedSpatRaster")
-           .fun_testIfInherits(object@config, "list")
-           .fun_testIfInherits(object@species.layer, "list")
+           if (object@filled) {
+             .check_checklist(object@checklist)
+             .fun_testIfInherits(object@project.name, "character")
+             .fun_testIfInherits(object@data, "PackedSpatRaster")
+             .fun_testIfInherits(object@config, "list")
+             .fun_testIfInherits(object@species.layer, "list")
+           }
            TRUE
          })
 
@@ -189,13 +193,14 @@ calc_sampling_effort <- function(checklist, folder.gbif,
   
   if (has.cluster) doParallel::stopImplicitCluster()
   
-  ## Output ------------------------------------------------------------
+  ### Output ------------------------------------------------------------
   output <- new("sampling_effort")
   output@data <- wrap(effort.layer)
   output@config <- sampling.effort.config
   output@checklist <- checklist
   output@project.name <- project.name
   output@species.layer <-  species.layer
+  output@filled <- TRUE
   output
 }
 
@@ -254,22 +259,27 @@ calc_sampling_effort <- function(checklist, folder.gbif,
 ##' @param object an object of class \code{sampling_effort}
 ##' @export
 ##' @importFrom terra nlyr
+##' @importFrom cli cli_h2 cli_h3 cli_li
 ##' 
 
 setMethod('show', signature('sampling_effort'),
           function(object)
           {
-            cat("\n Project: ",object@project.name)
-            cat("\n",  nlyr(rast(object@data)), 
-                " sampling effort layers")
-            cat(" for ", length(object@species.layer), "species")
-            cat("\n\nConfiguration of layers:\n")
-            show(object@config)
-            # object.range <- sapply(object@data, function(x){
-            #    range(values(x), na.rm = TRUE)
-            #  })
-            #  colnames(object.range) <- names(object@data)  
-            #  rownames(object.range) <- c("min","max")
-            
+            if (object@filled) {
+              config.text <- 
+                paste0(
+                  sapply(seq_along(object@config), function(i){
+                    paste0("[",i,"] ",names(object@config)[i], " (", 
+                           paste0(object@config[[i]], collapse = ', '), ")")
+                  }),
+                  collapse = " ; ")
+              
+              cli_h3("Sampling effort object")
+              cli_alert_info("Project: {object@project.name}")
+              cli_li("{nlyr(rast(object@data))} sampling effort layers for {length(object@species.layer)} species")
+              cli_li("Configuration of layers: {config.text}")
+            } else {
+              cat("\nEmpty sampling effort object")
+            }
             invisible(NULL)
           })
