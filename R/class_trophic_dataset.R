@@ -564,6 +564,186 @@ setMethod('show', signature('param_gbif'),
             }
             invisible(NULL)
           })
+## --------------------------------------------------------------------------- #
+# 5. param_subsampling         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name param_subsampling
+##' @aliases param_subsampling-class
+##' @author Remi Patin
+##'
+##' @title Parameters for subsampling dataset
+##'
+##' @description Class contained within a \code{\link{param_trophic}} object. A
+##'   \code{param_subsampling} object contains the set of parameters used to 
+##'   extract subsample occurrences in the final dataset. It contains:
+##'  \itemize{
+##'   \item the method used (only random for now)
+##'   \item the maximum number of presences
+##'   \item the maximum number of absences inside IUCN range
+##'   \item the minimum number of absences outside IUCN range (if applicable)
+##'   \item the maximum number of absences outside IUCN range (if applicable)
+##'   \item the target proportion of absences outside IUCN range (relative to 
+##'   total data within IUCN range)
+##'   }
+##'
+##' @slot method a \code{logical}, whether gbif was used or not
+##' @slot max.presences a \code{integer} maximum number of presences
+##' @slot max.absences.inside a \code{integer} maximum number of absences inside
+##'   IUCN range
+##' @slot min.absences.outside a \code{integer} minimum number of absences
+##'   outside IUCN range
+##' @slot max.absences.outside a \code{integer} maximum number of absences
+##'   outside IUCN range
+##' @slot prop.outside a \code{numeric}, target proportion of
+##'   absences outside IUCN range (relative to total data within IUCN range)
+
+
+## 5.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("param_subsampling",
+         representation(
+           method = "character",
+           max.presences = "numeric",
+           max.absences.inside = "numeric",
+           min.absences.outside = "numeric",
+           max.absences.outside = "numeric",
+           prop.outside = "numeric"),
+         validity = function(object){
+           .fun_testIfIn(object@method, c("none", "random"))
+           if (.fun_testIfPosNum(object@max.presences)) {
+             if (is.finite(object@max.presences)) {
+               .fun_testIfPosInt(object@max.presences)
+             }
+           }
+           
+           if (.fun_testIfPosNum(object@max.absences.inside)) {
+             if (is.finite(object@max.absences.inside)) {
+               .fun_testIfPosInt(object@max.absences.inside)
+             }
+           }
+           
+           .fun_testIfPosInt(object@min.absences.outside)
+           if (.fun_testIfPosNum(object@max.absences.outside)) {
+             if (is.finite(object@max.absences.outside)) {
+               .fun_testIfPosInt(object@max.absences.outside)
+             }
+           }
+           .fun_testIfPosNum(object@prop.outside)
+           stopifnot(is.finite(object@prop.outside))
+           TRUE
+         })
+
+
+
+## 5.2 Constructor ------------------------------------------------------------
+##' 
+##' @rdname param_subsampling
+##' @export
+##' 
+
+set_param_subsampling <- function(
+    method,
+    max.presences,
+    max.absences.inside,
+    min.absences.outside,
+    max.absences.outside,
+    prop.outside) {
+  cli_h2("Set subsampling parameters")
+  out <- new("param_subsampling")
+  
+  #  random subsampling activated by default
+  if (missing(method)) {
+    cli_alert_info("random subsampling activated")
+    method <- "random"
+  }
+  out@method <- method
+  if (method != "none") do.subsampling <- TRUE
+  
+  # max.presences
+  if (missing(max.presences)) {
+    out@max.presences <- 1e5
+    if (do.subsampling) cli_alert_info("Maximum number of presences set to 100 000")
+  } else {
+    out@max.presences <- max.presences
+  }
+  
+  # max.absences.inside
+  if (missing(max.absences.inside)) {
+    out@max.absences.inside <- 1e5
+    if (do.subsampling) cli_alert_info("Maximum number of absences inside IUCN range\\
+                                       set to 100 000")
+  } else {
+    out@max.absences.inside <- max.absences.inside
+  }
+  
+  
+  # min.absences.outside
+  
+  if (missing(min.absences.outside)) {
+    out@min.absences.outside <- 3000
+    if (do.subsampling) cli_alert_info("Minimum number of absences outside IUCN range\\
+                                       set to 3000")
+  } else {
+    out@min.absences.outside <- min.absences.outside
+  }
+  
+  # max.absences.outside
+  if (missing(max.absences.outside)) {
+    out@max.absences.outside <- 20000
+    if (do.subsampling) cli_alert_info("Maximum number of absences outside IUCN range\\
+                                       set to 20000")
+  } else {
+    out@max.absences.outside <- max.absences.outside
+  }
+  
+  # prop.outside
+  if (missing(prop.outside)) {
+    out@prop.outside <- 3
+    if (do.subsampling) cli_alert_info("prop.outside set to 3")
+  } else {
+    out@prop.outside <- prop.outside
+  }
+  validObject(out)
+  out
+}
+
+## 5.3 Methods -------------------------------------------------------------
+### show.param_subsampling -------------------------------------------------
+##'
+##' @rdname param_subsampling
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{param_subsampling}
+##' @importFrom cli cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('param_subsampling'),
+          function(object)
+          {
+            if (object@method == "none") {
+              cli_alert_warning("No subsampling")
+            } else {
+              cli_h2("Parameters for subsampling")
+              
+              if (object@max.presences < Inf) {
+                cli_li("Subsampling presences to have a maximum of {param.subsampling@max.presences}")
+              }
+              
+              if (object@max.absences.inside < Inf) {
+                cli_li("Subsampling absences inside IUCN range to have a maximum of {param.subsampling@max.absences.inside}")
+              }
+              
+              cli_li(
+                "Subsample absences outside IUCN range to have a minimum of \\
+{object@min.absences.outside}, \\
+a target of {object@prop.outside} times \\
+the data inside IUCN range and a maximum of \\
+{object@max.absences.outside} absences"
+              )             
+            }
+            invisible(NULL)
+          })
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
