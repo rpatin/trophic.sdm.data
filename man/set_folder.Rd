@@ -14,6 +14,5 @@ and data may be written}
 a named list
 }
 \description{
-Initialize and set folder name for \code{\link{prepare_dataset_gbif}}
-and \code{\link{prepare_dataset_iucn}}
+Initialize and set folder name for \code{\link{prepare_dataset}}
 }

@@ -511,14 +511,14 @@ get_species_buffer <- function(buffer.config, checklist){
   .check_checklist(checklist)
   
   buffer.name <- names(buffer.config)
-  check.taxa <- sapply(buffer.name, function(x) check_taxa(x, checklist))
-  if ( !all(check.taxa) ) {
-    for (this.taxa in which(!check.taxa)) {
-      cli_alert_danger("taxa {buffer.name[this.taxa]} not found in the \\
-                         provided checklist")
-    }
-    stop(paste0("Some taxa given in buffer.config were not found."))
-  }
+  # check.taxa <- sapply(buffer.name, function(x) check_taxa(x, checklist))
+  # if ( !all(check.taxa) ) {
+  #   for (this.taxa in which(!check.taxa)) {
+  #     cli_alert_danger("taxa {buffer.name[this.taxa]} not found in the \\
+  #                        provided checklist")
+  #   }
+  #   stop(paste0("Some taxa given in buffer.config were not found."))
+  # }
   species.buffer <- lapply(seq_len(nrow(checklist)), function(x){
     checklist.sub <- checklist[x,]
     for (level_to_check in c("SpeciesName",

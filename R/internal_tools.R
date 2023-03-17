@@ -299,9 +299,9 @@
 {
   x.name <- deparse(substitute(x))
   if (!is.numeric(x)) {
-    stop(paste0("\n", x.name, "must be a integer"))
+    stop(paste0("\n", x.name, " must be a integer"))
   } else if (any(x < 0) || any(x %% 1 != 0)) {
-    stop(paste0("\n", x.name, "must be a positive integer"))
+    stop(paste0("\n", x.name, " must be a positive integer"))
   }
   TRUE
 }
@@ -320,9 +320,9 @@
 .fun_testIfPosNum <- function(x) {
   x.name <- deparse(substitute(x))
   if (!is.numeric(x)) {
-    stop(paste0("\n", x.name, "must be a numeric"))
+    stop(paste0("\n", x.name, " must be a numeric"))
   } else if (any(x < 0)) {
-    stop(paste0("\n", x.name, "must be a positive numeric"))
+    stop(paste0("\n", x.name, " must be a positive numeric"))
   }
   TRUE
 }
@@ -594,7 +594,7 @@ check_taxa <- function(this.taxa, checklist){
 ##' @keywords internal
 
 find_iucn_index <- function(df, this.species, species_col, capitalized){
-  if(capitalized){
+  if  (capitalized) {
     presence_col <- "PRESENCE"
     season_col <- "SEASONAL"
   } else {
@@ -607,20 +607,20 @@ find_iucn_index <- function(df, this.species, species_col, capitalized){
 }
 
 
-## get_predator_summary  ----------------------------
-##' @name get_predator_summary
+## get_trophic_summary  ----------------------------
+##' @name get_trophic_summary
 ##' 
 ##' @title Get summary of predator occurrences
 ##' 
 ##' @description Get prevalence and summary of occurrences inside and outside
-##' IUCN range for a given predator.
+##' IUCN range for a given species
 ##' @param this.trophic a \code{data.frame} with occurrence data: columns cell,
 ##' x, y, presence, inside_iucn, SpeciesName, Code and all prey occurrences as 
 ##' columns 
 ##' @return a data.frame
 ##' @export
 
-get_predator_summary <- function(this.trophic){
+get_trophic_summary <- function(this.trophic){
   tmp.inside <- this.trophic %>% 
     group_by(SpeciesName, presence, inside_iucn) %>% 
     summarize(n = n())
@@ -697,8 +697,7 @@ get_prey_summary <- function(this.trophic){
 ##' 
 ##' @title Set folder for prepare_dataset
 ##' 
-##' @description Initialize and set folder name for \code{\link{prepare_dataset_gbif}}
-##' and \code{\link{prepare_dataset_iucn}}
+##' @description Initialize and set folder name for \code{\link{prepare_dataset}}
 ##' @inheritParams trophic_dataset
 ##' @return a named list
 ##' @export

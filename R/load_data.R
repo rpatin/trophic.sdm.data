@@ -173,11 +173,11 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
                                                  Code = Code,
                                                  type = type)
             if (type == "trophic") {
-              df <- fread(x@file.trophic.link[SpeciesName])
+              df <- fread(x@files@trophic[SpeciesName])
             } else if (type == "trophic.raw") {
-              df <- fread(x@param.raw$file.trophic.raw.link[SpeciesName])
+              df <- fread(x@files@trophic.raw[SpeciesName])
             } else if (type == "occurrence") {
-              df <- fread(x@file.occurrence.link[SpeciesName])
+              df <- fread(x@files@occurrence[SpeciesName])
             }
             df
           })
@@ -194,11 +194,11 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
   
   .fun_testIfIn(type, c("trophic","occurrence","trophic.raw"))
   if (type == "trophic") {
-    summary.occ <- x@summary.predator
+    summary.occ <- x@summary@trophic
   } else if (type == "trophic.raw") {
-    summary.occ <- x@param.raw$summary.predator.raw
+    summary.occ <- x@summary.raw@trophic
   } else if (type == "occurrence") {
-    summary.occ <- x@summary.occurrence
+    summary.occ <- x@summary@occurrence
   }
   
   if (!xor(missing(SpeciesName),missing(Code))) {

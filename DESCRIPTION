@@ -1,7 +1,7 @@
 Package: trophic.sdm.data
 Type: Package
 Title: Preparing data for European Vertebrates trophic SDM
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: c(person("Remi", "Patin", role = c("aut", "cre"), email = "remi.patin@normale.fr"),
              person("Giovanni", "Poggiato", role = "aut"))
 URL: https://github.com/rpatin/trophic.sdm.data

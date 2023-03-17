@@ -48,7 +48,7 @@ utils::globalVariables(names = c("species.buffer"))
 utils::globalVariables(names = c("species.buffer"))
 
 
-# get_predator_summary -------------------------------------------------------------
+# get_trophic_summary -------------------------------------------------------------
 
 utils::globalVariables(names = c("SpeciesName",
                                  "inside_iucn"))
@@ -59,7 +59,7 @@ utils::globalVariables(names = c(".",
                                  "..this.prey",
                                  "this.prey"))
 
-# prepare_dataset_gbif -------------------------------------------------------------
+# prepare_dataset -------------------------------------------------------------
 
 utils::globalVariables(names = c("param.filter",
                                  "species.buffer",
