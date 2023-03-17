@@ -84,6 +84,73 @@ setMethod('show', signature('trophic_summary'),
             invisible(NULL)
           })
 
+## --------------------------------------------------------------------------- #
+# 2. trophic_files         ---------------------------------------------------
+## --------------------------------------------------------------------------- #
+
+##' @name trophic_files
+##' @aliases trophic_files-class
+##' @author Remi Patin
+##'
+##' @title Set of links to data files
+##'
+##' @description Class contained within \code{\link{trophic_dataset}}. A
+##'   \code{trophic_files} object contains a set of file links to the different
+##'   dataset generated throughout the function \code{\link{prepare_dataset}}:
+##'   \itemize{
+##'   \item Occurrence files (focal species only)
+##'   \item Raw trophic files (focal species and its prey)
+##'   \item Final trophic files (final subsampled dataset)
+##'   }
+##'
+##' @slot occurrence a named \code{vector} with a path to raw 
+##' occurrence data for each species.
+##' @slot trophic a named \code{vector} with a path to filtered
+##' trophic data for each species.
+##' @slot trophic.raw a named \code{vector} with a path to raw
+##' trophic data for each species.
+
+## 2.1 Class Definition ----------------------------------------------------------------------------
+
+setClass("trophic_files",
+         representation(occurrence = "character",
+                        trophic = "character",
+                        trophic.raw = "character"),
+         validity = function(object){
+           stopifnot(!is.null(names(object@occurrence)))
+           stopifnot(!is.null(names(object@trophic)))
+           stopifnot(!is.null(names(object@trophic.raw)))
+           TRUE
+         })
+
+## 2.2 Methods -------------------------------------------------------------
+### show.trophic_files    --------------------------------------------------
+##'
+##' @rdname trophic_files
+##' @importMethodsFrom methods show
+##' @param object an object of class \code{trophic_files}
+##' @importFrom cli cli_h2 cli_h3 cli_li cli_text
+##' @export
+##'
+
+setMethod('show', signature('trophic_files'),
+          function(object)
+          {
+            n.species <- length(object@occurrence)
+            if (length(n.species) == 0) {
+              cli_alert_warning("Empty trophic_files object")
+            } else {
+              n.trophic <- length(object@trophic)
+              n.trophic.raw <- length(object@trophic.raw)
+              cli_h3("trophic_files object")
+              cli_text("Available file links for:")
+              cli_li("Occurrence data for {n.species} species")
+              cli_li("Raw trophic data for {n.trophic.raw} species")
+              cli_li("Subsampled trophic data for {n.trophic} species")
+            }
+            invisible(NULL)
+          })
+
 ##' @name trophic_dataset
 ##' @aliases trophic_dataset-class
 ##' @author Remi Patin
