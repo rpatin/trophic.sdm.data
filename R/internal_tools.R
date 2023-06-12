@@ -153,7 +153,7 @@
                      {this.check}")
     stop("Duplicated Code in checklist")
   }
-
+  
   return(TRUE)
 }
 
@@ -606,7 +606,38 @@ find_iucn_index <- function(df, this.species, species_col, capitalized){
           df[,season_col] %in% c(1,2))
 }
 
+## get_occurrence_summary  ----------------------------
+##' @name get_occurrence_summary
+##' 
+##' @title Get occurrence summary
+##' 
+##' @description Get occurrence summary
+##' @param this.df a data.frame
+##' @return a named list
+##' @export
 
+get_occurrence_summary <- function(this.df){
+  n.presences <- length(which(this.df$presence == 1))
+  n.absences <- length(which(this.df$presence == 0))
+  n.absences.outside <- 
+    length(which(this.df$presence == 0 &
+                   !this.df$inside_iucn))
+  n.absences.inside.certain <-
+    length(which(this.df$presence == 0 &
+                   this.df$inside_iucn & 
+                   this.df$status == "certain"))
+  n.absences.inside.uncertain <-
+    length(which(this.df$presence == 0 &
+                   this.df$inside_iucn & 
+                   this.df$status == "uncertain"))
+  return(list(
+    "n.presences" = n.presences,
+    "n.absences" = n.absences, 
+    "n.absences.outside" = n.absences.outside,
+    "n.absences.inside.certain" = n.absences.inside.certain,
+    "n.absences.inside.uncertain" = n.absences.inside.uncertain
+  ))
+}
 ## get_trophic_summary  ----------------------------
 ##' @name get_trophic_summary
 ##' 
@@ -691,7 +722,7 @@ get_prey_summary <- function(this.trophic){
   }
   prey.summary
 }
-  
+
 ## set_folder  ----------------------------
 ##' @name set_folder
 ##' 
@@ -716,3 +747,70 @@ set_folder <- function(project.name){
   ))
 }
 
+## subsample_dataset  ----------------------------
+##' @name subsample_dataset
+##' 
+##' @title Subsample dataset
+##' 
+##' @description subsample a dataset
+##' @param df a data.frame
+##' @param param.subsampling a \code{param_subsampling} object
+##' @return a named list
+##' @export
+
+subsample_dataset <- function(df, param.subsampling){
+  df$subsample <- TRUE
+  # this.index <- which(summary.trophic$SpeciesName == this.species)
+  this.summary <- get_occurrence_summary(df)
+  aim_presence  <- pmin(this.summary$n.presences, param.subsampling@max.presences)
+  aim_absence_inside  <- pmin(this.summary$n.absences.inside.certain, param.subsampling@max.absences.inside)
+  tot_inside = aim_presence + aim_absence_inside
+  aim_outside <-
+    pmin(
+      pmax(param.subsampling@min.absences.outside,
+           tot_inside * param.subsampling@prop.outside),
+      param.subsampling@max.absences.outside
+    )
+  filter_presence = this.summary$n.presences > aim_presence
+  filter_absence_inside = this.summary$n.absences.inside.certain > aim_absence_inside
+  filter_absence_outside = this.summary$n.absences.outside > aim_outside
+  
+  
+  if (param.subsampling@method == "random") {
+    #### subsample presences ------------------------------------
+    if (filter_presence) {
+      this.aim <- aim_presence
+      which.presence <- which(df$presence == 1)
+      this.to.remove <- length(which.presence) - this.aim
+      which.to.remove <- sample(which.presence, 
+                                replace = FALSE,
+                                size = this.to.remove)
+      df$subsample[which.to.remove] <- FALSE
+    }
+    #### subsample absences inside ------------------------------------
+    if (filter_absence_inside) {
+      this.aim <- aim_absence_inside
+      which.absence.inside <- which(df$presence == 0 & 
+                                      df$subsample & 
+                                      df$inside_iucn)
+      this.to.remove <- length(which.absence.inside) - this.aim
+      which.to.remove <- sample(which.absence.inside, 
+                                replace = FALSE,
+                                size = this.to.remove)
+      df$subsample[which.to.remove] <- FALSE
+    }
+    #### subsample absences outside ------------------------------------
+    if (filter_absence_outside) {
+      this.aim <- aim_outside
+      aim_absence_outside <- which(df$presence == 0 &
+                                     df$subsample & 
+                                     !df$inside_iucn)
+      this.to.remove <- length(aim_absence_outside) - this.aim
+      which.to.remove <- sample(aim_absence_outside, 
+                                replace = FALSE,
+                                size = this.to.remove)
+      df$subsample[which.to.remove] <- FALSE
+    }
+  }
+  return(df)
+}
