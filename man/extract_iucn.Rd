@@ -2,7 +2,6 @@
 % Please edit documentation in R/extract_assemble_functions.R
 \name{extract_iucn}
 \alias{extract_iucn}
-\alias{assemble_trophic}
 \title{Extract IUCN occurrences for a single species}
 \usage{
 extract_iucn(
@@ -11,10 +10,9 @@ extract_iucn(
   folder.iucn,
   occurrence.dir,
   project.name,
-  logfile
+  logfile,
+  overwrite
 )
-
-assemble_trophic(this.species, listcode, file.occurrence.link, raw.dir, param)
 }
 \arguments{
 \item{this.species}{a \code{character}: species name}
@@ -31,9 +29,6 @@ and data may be written}
 \item{logfile}{a \code{character}, file to store logs}
 }
 \description{
-\code{extract_iucn} retrieve IUCN data from files with a given 
-configuration
-
 \code{extract_iucn} retrieve IUCN data from files with a given 
 configuration
 }

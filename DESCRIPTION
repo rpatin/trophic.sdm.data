@@ -9,7 +9,7 @@ BugReports: https://github.com/rpatin/trophic.sdm.data/issues
 Description: Provides tools to prepare gbif and IUCN data to be used for a trophic SDM.
 License: GPL-3
 LazyData: TRUE
-RoxygenNote: 7.2.2
+RoxygenNote: 7.2.3
 Depends:
     R (>= 4.0.0)
 Imports:
@@ -37,4 +37,3 @@ Suggests:
 VignetteBuilder: knitr
 Encoding: UTF-8
 Language: en-US
-

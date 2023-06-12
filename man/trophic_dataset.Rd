@@ -75,6 +75,9 @@ prepare_dataset(
   data.mask,
   project.name,
   nb.cpu,
+  overwrite.occurrence = FALSE,
+  overwrite.trophic = FALSE,
+  subsample.assemble,
   ...
 )
 }

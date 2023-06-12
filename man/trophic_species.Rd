@@ -37,8 +37,11 @@ as well as the motivation of removal}
 \item{\code{filtered.prey}}{a named \code{list} vector with the prey removed for 
 each species as well as the motivation of removal}
 
-\item{\code{fresh}}{a named \code{logical} vector. For each species wether extraction
-was freshly done or not}
+\item{\code{fresh.occurrence}}{a named \code{logical} vector. For each species
+whether occurrence extraction was freshly done or not}
+
+\item{\code{fresh.trophic}}{a named \code{logical} vector. For each species whether
+trophic extraction was freshly done or not}
 }}
 
 \author{

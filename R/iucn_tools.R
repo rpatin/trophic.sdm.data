@@ -22,6 +22,7 @@
 ##'   range. If several taxonomic groups are valid for a given species, the
 ##'   lowest one will be prioritized. Buffer distances are given in km.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
+##' @export
 
 rasterize_iucn <- function(checklist, 
                            folder.iucn,
@@ -181,6 +182,7 @@ rasterize_iucn <- function(checklist,
 ##' @importFrom cli cli_status_clear
 ##' @return a named list with the buffer associated to each species
 ##' 
+##' @export
 
 buffer_iucn <- function(checklist, 
                         folder.iucn,
