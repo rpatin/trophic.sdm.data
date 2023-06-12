@@ -4,17 +4,7 @@
 \alias{rasterize_iucn}
 \title{Buffer IUCN distribution}
 \usage{
-rasterize_iucn(
-  checklist,
-  folder.iucn,
-  list.iucn,
-  data.mask,
-  project.name,
-  buffer.config,
-  nb.cpu = 1,
-  do.raster = TRUE,
-  do.buffer = TRUE
-)
+rasterize_iucn(checklist, folder.iucn, data.mask, project.name, nb.cpu = 1)
 }
 \arguments{
 \item{checklist}{a \code{data.frame} with information on all species of interest}
@@ -22,27 +12,21 @@ rasterize_iucn(
 \item{folder.iucn}{a \code{character}: folders in which IUCN distributions
 are stored}
 
-\item{list.iucn}{a named list of IUCN shapefile path. Name must be Amphibia_Old,
-Amphibia_New, Mammalia_Old, Mammalia_New, Reptilia_Old, Reptilia_New, Aves.}
-
 \item{data.mask}{a \code{SpatRaster} with the extent and the grid used 
 in the project}
 
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
+\item{nb.cpu}{number of CPU to use}
+
+\item{list.iucn}{a named list of IUCN shapefile path. Name must be Amphibia_Old,
+Amphibia_New, Mammalia_Old, Mammalia_New, Reptilia_Old, Reptilia_New, Aves.}
+
 \item{buffer.config}{a named \code{list} with taxonomic groups (Class, Order,
 Family, Species) and associated distance that will be used to buffer IUCN
 range. If several taxonomic groups are valid for a given species, the
 lowest one will be prioritized. Buffer distances are given in km.}
-
-\item{nb.cpu}{number of CPU to use}
-
-\item{do.raster}{a \code{boolean}. TRUE if raw distribution needs to
-be calculated}
-
-\item{do.buffer}{a \code{boolean}. TRUE if buffered distribution 
-needs to be calculated}
 }
 \description{
 \code{buffer_iucn} get the IUCN polygons for each class (old 

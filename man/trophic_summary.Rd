@@ -21,8 +21,7 @@ Class contained within \code{\link{trophic_dataset}}. A
   \item final dataset summary
   \item prey summary
   \item filtered species summary
-  \item protected species summary
-  \item patrimonial species summary
+  \item patrimonial and protected species summary
   }
 }
 \section{Slots}{
@@ -44,10 +43,8 @@ prevalence for all prey associated to a predator dataset.}
 filtered throughout the data generation}
 
 \item{\code{protected}}{a \code{data.frame} with a summary of species protected by 
-the EU habitat directive}
-
-\item{\code{patrimonial}}{a \code{data.frame} with a summary of species listed as 
-patrimonial species by the french INPN}
+the EU habitat directive, listed in IUCN red list or within french patrimonial
+species list}
 }}
 
 \author{
