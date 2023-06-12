@@ -3,6 +3,7 @@
 export(calc_sampling_effort)
 export(detect_gbif_outsider)
 export(detect_taxonomic_conflict)
+export(get_occurrence_summary)
 export(get_prey_summary)
 export(get_trophic_summary)
 export(load_data)

@@ -20,13 +20,17 @@ library(badger)
 
 # News 
 
-## v.0.0.4
+## v.0.0.5
 ### Upcoming features
-- support for multiple resolutions
-- workflow for IUCN
 - evaluations
 - calculation of aggregated prey metrics
 - splitting of trophic group in metaweb
+
+## v.0.0.4 (12/06/2023)
+- support for multiple resolutions
+- workflow for IUCN
+- improved subsampling
+- improved workflow 
 
 ## v.0.0.3
 - subsampling of absences outside IUCN distribution
