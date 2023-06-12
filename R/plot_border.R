@@ -53,9 +53,10 @@ map_effort <- function(project.name, vector_data, data.mask, suffix){
       this.rast <- rast(paste0(project.name, "/sampling.effort.", this.layer, ".tif"))  
       this.mean <- extract(this.rast, vector_data, fun = "mean", na.rm = TRUE)
       this.vector <- vector_data
-      this.vector$effort <- this.mean[, gsub(pattern = " ",
-                                             replacement = ".",
-                                             x = this.layer)]
+      # this.vector$effort <- this.mean[, gsub(pattern = " ",
+      #                                        replacement = ".",
+      #                                        x = this.layer)]
+      this.vector$effort <- this.mean[, this.layer]
       this.vector <- crop(this.vector, data.mask)
       
       this.vector$effort_char <- factor(myBreaks_label[findInterval(this.vector$effort,
@@ -141,7 +142,7 @@ map_uncertain <- function(project.name, vector_data, data.mask, suffix){
       this.rast <- rast(paste0(project.name, "/summary.uncertain_", this.layer, ".tif"))  
       this.mean <- extract(this.rast, vector_data, fun = "mean", na.rm = TRUE)
       this.vector <- vector_data
-      this.vector$prop <- this.mean[, "mask.grid"]
+      this.vector$prop <- this.mean[, "layer"]
       this.vector <- crop(this.vector, data.mask)
       
       this.vector$effort_char <- factor(myBreaks_label[findInterval(this.vector$prop, vec = myBreaks_tot)],
@@ -229,7 +230,7 @@ map_prey_filtering <- function(project.name, vector_data, data.mask, suffix){
       this.rast <- rast(paste0(project.name, "/summary.filtered_", this.layer, ".tif"))  
       this.mean <- extract(this.rast, vector_data, fun = "mean", na.rm = TRUE)
       this.vector <- vector_data
-      this.vector$prop <- this.mean[, "mask.grid"]
+      this.vector$prop <- this.mean[, "layer"]
       this.vector <- crop(this.vector, data.mask)
       
       this.vector$effort_char <- factor(myBreaks_label[findInterval(this.vector$prop, vec = myBreaks_tot)],
