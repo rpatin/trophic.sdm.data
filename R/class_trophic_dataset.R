@@ -16,8 +16,7 @@
 ##'   \item final dataset summary
 ##'   \item prey summary
 ##'   \item filtered species summary
-##'   \item protected species summary
-##'   \item patrimonial species summary
+##'   \item patrimonial and protected species summary
 ##'   }
 ##'
 ##' @slot occurrence a \code{data.frame} with the list of species and 
@@ -32,9 +31,8 @@
 ##' @slot filtered a \code{data.frame} with a summary of species that were 
 ##' filtered throughout the data generation
 ##' @slot protected a \code{data.frame} with a summary of species protected by 
-##' the EU habitat directive
-##' @slot patrimonial a \code{data.frame} with a summary of species listed as 
-##' patrimonial species by the french INPN
+##' the EU habitat directive, listed in IUCN red list or within french patrimonial
+##' species list
 
 ## 1.1 Class Definition ----------------------------------------------------------------------------
 
@@ -43,8 +41,7 @@ setClass("trophic_summary",
                         trophic = "data.frame",
                         prey = "data.frame",
                         filtered = "data.frame",
-                        protected = "data.frame",
-                        patrimonial = "data.frame"),
+                        protected = "data.frame"),
          validity = function(object){
            TRUE
          })
