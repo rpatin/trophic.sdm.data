@@ -9,6 +9,8 @@ extract_gbif(
   this.code,
   param.gbif,
   occurrence.dir,
+  occurrence.rast.dir,
+  status.rast.dir,
   project.name,
   logfile,
   overwrite

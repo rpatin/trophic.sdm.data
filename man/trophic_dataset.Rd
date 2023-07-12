@@ -68,6 +68,7 @@ load_data(x, ...)
 prepare_dataset(
   checklist,
   metaweb,
+  trophic.groups,
   use.gbif = TRUE,
   param.gbif,
   param.subsampling,
@@ -101,6 +102,9 @@ information}
 \item{checklist}{a \code{data.frame} with information on all species of interest}
 
 \item{metaweb}{a \code{data.frame} with all species interactions listed}
+
+\item{trophic.groups}{a \code{data.frame} assigning trophic groups to all 
+species of interest}
 
 \item{folder.iucn}{a \code{character}, folder in which IUCN buffered range
 are stored as raster files.}

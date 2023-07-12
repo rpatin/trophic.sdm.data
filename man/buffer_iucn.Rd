@@ -11,6 +11,7 @@ buffer_iucn(
   data.mask,
   project.name,
   buffer.config,
+  overwrite = TRUE,
   nb.cpu = 1
 )
 }

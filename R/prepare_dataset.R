@@ -11,6 +11,7 @@
 
 prepare_dataset <- function(checklist, 
                             metaweb,
+                            trophic.groups,
                             use.gbif = TRUE,
                             param.gbif,
                             param.subsampling,
@@ -28,6 +29,7 @@ prepare_dataset <- function(checklist,
   args <- .prepare_dataset.check.args(
     checklist = checklist, 
     metaweb = metaweb,
+    # trophic.groups = trophic.groups,
     use.gbif = use.gbif,
     param.gbif = param.gbif,
     param.subsampling = param.subsampling,
@@ -50,6 +52,7 @@ prepare_dataset <- function(checklist,
   param = new("param_trophic")
   param@checklist.raw <- checklist
   param@metaweb.raw <- metaweb
+  param@trophic.groups.raw <- trophic.groups
   param@param.gbif <- param.gbif
   param@param.subsampling <- param.subsampling
   param@folder.iucn <- folder.iucn
@@ -66,7 +69,7 @@ prepare_dataset <- function(checklist,
   if (file.exists(link_logfile_step2)) file.remove(link_logfile_step2)
   
   cli_progress_done()
-  ## Step 1 - Buffer IUCN ranges + Generate Species Occurrence dataset ---------
+  ## Step 1 - Generate Species Occurrence dataset ----------------------------
   cli_h2("Step 1 - Individual species occurrence dataset")
   this.species = names(listcode)[1]
   species.occurrence <- foreach(this.species = names(listcode)) %dopar% {
@@ -76,22 +79,37 @@ prepare_dataset <- function(checklist,
                                   this.code,
                                   param.gbif, 
                                   occurrence.dir = occurrence.dir,
+                                  occurrence.rast.dir = occurrence.rast.dir,
+                                  status.rast.dir = status.rast.dir,
                                   project.name = project.name,
                                   logfile = logfile_step1,
                                   overwrite = overwrite.occurrence) 
+      if(activate_backup(gbif.output, param.gbif@backup.iucn)) {
+        cli_alert_info("activate IUCN backup for {this.species}")
+        gbif.output<- extract_iucn(this.species, 
+                                   this.code, 
+                                   folder.iucn = param@folder.iucn, 
+                                   occurrence.dir = occurrence.dir,
+                                   occurrence.rast.dir = occurrence.rast.dir,
+                                   status.rast.dir = status.rast.dir,
+                                   project.name = project.name,
+                                   logfile = logfile_step1,
+                                   overwrite = TRUE) # cannot properly check overwriting if gbif was just written but have not enough points
+      }
       return(gbif.output)
     } else {
       iucn.output <- extract_iucn(this.species, 
                                   this.code, 
                                   folder.iucn = param@folder.iucn, 
                                   occurrence.dir = occurrence.dir,
+                                  occurrence.rast.dir = occurrence.rast.dir,
+                                  status.rast.dir = status.rast.dir,
                                   project.name = project.name,
                                   logfile = logfile_step1,
                                   overwrite = overwrite.occurrence)
       return(iucn.output)
     }
   } # end foreach Step 1
-  # browser()
   ## Summary Step 1 - Occurrence dataset ---------
   occurrence.summary <- lapply(species.occurrence, function(x){
     if (inherits(x$occurrence.summary, "data.frame")) {
@@ -100,8 +118,9 @@ prepare_dataset <- function(checklist,
       return(NULL)
     }
   }) %>% 
-    rbindlist()
+    rbindlist(., fill = TRUE)
   
+  # browser()
   filtered.species <- 
     do.call('c', 
             lapply(species.occurrence, function(x){
@@ -115,6 +134,7 @@ prepare_dataset <- function(checklist,
             })) 
   if (is.null(filtered.species)) filtered.species <- character()
   
+  # browser()
   fresh.occurrence <- 
     do.call('c', 
             lapply(species.occurrence, function(x){
@@ -129,6 +149,7 @@ prepare_dataset <- function(checklist,
   # browser()
   if (is.null(filtered.species)) filtered.species <- character()
   
+  # browser()
   file.occurrence.link <- 
     do.call('c', 
             lapply(species.occurrence, function(x){
@@ -141,6 +162,33 @@ prepare_dataset <- function(checklist,
               }
             }))
   
+  # browser()
+  file.occurrence.rast.link <- 
+    do.call('c', 
+            lapply(species.occurrence, function(x){
+              if (x$status == "failed") {
+                return(NULL)
+              } else {
+                y <- x$occurrence.rast.file
+                names(y) <- x$SpeciesName  
+                return(y)
+              }
+            }))
+  
+  # browser()
+  file.status.rast.link <- 
+    do.call('c', 
+            lapply(species.occurrence, function(x){
+              if (x$status == "failed") {
+                return(NULL)
+              } else {
+                y <- x$status.rast.file
+                names(y) <- x$SpeciesName  
+                return(y)
+              }
+            }))
+  
+  # browser()
   IUCN.link <- 
     do.call('c', 
             lapply(species.occurrence, function(x){
@@ -172,9 +220,11 @@ prepare_dataset <- function(checklist,
     step2.try <- try({
       tmp <- assemble_trophic(this.species,
                               listcode,
-                              file.occurrence.link,
+                              file.occurrence.link = file.occurrence.link,
+                              file.occurrence.rast.link = file.occurrence.rast.link,
+                              file.status.rast.link = file.status.rast.link,
                               raw.dir = raw.dir,
-                              param,
+                              param = param,
                               overwrite = overwrite.trophic,
                               fresh.occurrence = fresh.occurrence,
                               subsample.assemble =  subsample.assemble,
@@ -319,6 +369,17 @@ prepare_dataset <- function(checklist,
   names(kept.prey) <- listname
   
   filtered.prey <- sapply(species.trophic.list, function(x) x$filtered.prey)
+  
+  if( any(colnames(occurrence.summary) == "threshold.certain")) {
+    species.method <- ifelse(is.na(occurrence.summary$threshold.certain),
+                             "IUCN","gbif")
+  } else {
+    species.method <- rep("IUCN", nrow(occurrence.summary))
+  }
+  species.method[!fresh.occurrence] <- "Old extraction"
+  names(species.method) <- occurrence.summary$SpeciesName
+  species.method <- factor(species.method, 
+                           levels = c("IUCN","gbif","Old extraction"))
   output <- new('trophic_dataset')
   # browser()
   
@@ -344,14 +405,14 @@ prepare_dataset <- function(checklist,
   output@species@filtered <- filtered.species
   output@species@kept.prey <- kept.prey
   output@species@filtered.prey <- filtered.prey
-  
+  output@species@species.method <- species.method
   # fill data.mask and project.name
   output@project.name <- project.name
   output@data.mask <- wrap(data.mask)
   saveRDS(output, file = paste0(project.name,"/",project.name,".trophic_dataset.rds"))
   validObject(output)
   
-  ## Subsample & Filter output ------------------------------------------------
+  ## Step 3 - Subsample & Filter output ---------------------------------------
   cli_h1("Subsampling dataset")
   # browser()
   

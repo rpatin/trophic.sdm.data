@@ -33,10 +33,14 @@ that remain after filtering of species.}
 \item{\code{metaweb}}{a \code{data.frame} with all species interactions 
 that remain after filtering of species and prey.}
 
+\item{\code{trophic.groups}}{a \code{data.frame}}
+
 \item{\code{checklist.raw}}{a \code{data.frame} with original information on all
 species}
 
 \item{\code{metaweb.raw}}{a \code{data.frame} with all original species interactions}
+
+\item{\code{trophic.groups.raw}}{a \code{data.frame}}
 
 \item{\code{param.gbif}}{a \code{\link{param_gbif}} object with all parameters used
 to extract gbif data}

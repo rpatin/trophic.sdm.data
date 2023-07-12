@@ -173,11 +173,11 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
                                                  Code = Code,
                                                  type = type)
             if (type == "trophic") {
-              df <- fread(x@files@trophic[SpeciesName])
+              df <- fread(x@files@trophic[SpeciesName], showProgress = FALSE)
             } else if (type == "trophic.raw") {
-              df <- fread(x@files@trophic.raw[SpeciesName])
+              df <- fread(x@files@trophic.raw[SpeciesName], showProgress = FALSE)
             } else if (type == "occurrence") {
-              df <- fread(x@files@occurrence[SpeciesName])
+              df <- fread(x@files@occurrence[SpeciesName], showProgress = FALSE)
             }
             df
           })

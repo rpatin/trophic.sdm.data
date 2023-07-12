@@ -190,6 +190,7 @@ buffer_iucn <- function(checklist,
                         data.mask,
                         project.name,
                         buffer.config,
+                        overwrite = TRUE,
                         nb.cpu = 1){
   cli_status_clear()
   cli_h1("Buffer IUCN range maps")
@@ -200,6 +201,7 @@ buffer_iucn <- function(checklist,
                                   data.mask = data.mask,
                                   project.name = project.name,
                                   buffer.config = buffer.config,
+                                  overwrite = overwrite,
                                   nb.cpu = nb.cpu)
   for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
   
@@ -249,7 +251,7 @@ buffer_iucn <- function(checklist,
         project.name = project.name,
         open = "a",
         silent = TRUE)
-    } else if (!file.exists(this.out.file)) {
+    } else if (!file.exists(this.out.file) | overwrite) {
       cli_progress_step(this.species)
 
       read.try <- try({
@@ -314,6 +316,7 @@ buffer_iucn <- function(checklist,
                                     data.mask,
                                     project.name,
                                     buffer.config,
+                                    overwrite, 
                                     nb.cpu){
   
   
@@ -335,6 +338,10 @@ buffer_iucn <- function(checklist,
   #### folder.iucn.raster -----------------------------------------------------------
   .fun_testIfInherits(folder.iucn.raster, "character")
   .fun_testIfDirExists(folder.iucn.raster)
+  
+  #### overwrite ------------------
+  
+  stopifnot(is.logical(overwrite))
   
   #### nb.cpu -------------------------------------------------------  
   .fun_testIfPosInt(nb.cpu)

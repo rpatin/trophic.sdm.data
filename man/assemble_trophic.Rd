@@ -8,6 +8,8 @@ assemble_trophic(
   this.species,
   listcode,
   file.occurrence.link,
+  file.occurrence.rast.link,
+  file.status.rast.link,
   raw.dir,
   param,
   overwrite,

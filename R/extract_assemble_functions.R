@@ -21,6 +21,8 @@ extract_gbif <- function(this.species,
                          this.code, 
                          param.gbif,
                          occurrence.dir, 
+                         occurrence.rast.dir, 
+                         status.rast.dir, 
                          project.name,
                          logfile,
                          overwrite) {
@@ -54,7 +56,7 @@ extract_gbif <- function(this.species,
       this.reason <- paste0("no occurrences within IUCN range")
     } else {
       # more than min.gbif data
-      this.occurrence <- paste0(occurrence.dir, this.code, ".csv")
+      this.occurrence <- paste0(occurrence.dir, this.code, ".csv.gz")
       iucn.try <- try({
         this.iucn <-
           locate_iucn_distribution(species.code = this.code,
@@ -164,7 +166,8 @@ extract_gbif <- function(this.species,
           }
           this.occurrence.df$SpeciesName <- this.species
           this.occurrence.df$Code <- this.code
-          fwrite(this.occurrence.df, file = this.occurrence)
+          # browser()
+          fwrite(this.occurrence.df, file = this.occurrence, showProgress = FALSE)
           
           ### Summary --------------------------
           n.list <- get_occurrence_summary(this.occurrence.df)
@@ -200,7 +203,7 @@ extract_gbif <- function(this.species,
                                folder.iucn = param.gbif@folder.iucn.buffer,
                                filetype = '.tif')
     
-    this.occurrence.df <- fread(this.occurrence)
+    this.occurrence.df <- fread(this.occurrence, showProgress = FALSE)
     
     n.list <- get_occurrence_summary(this.occurrence.df)
     for (argi in names(n.list)) { assign(x = argi, value = n.list[[argi]]) }
@@ -237,16 +240,24 @@ extract_gbif <- function(this.species,
     silent = TRUE)
   # browser()
   
-  cli_progress_done()
   
   # browser()
+  raster.files <- occurrences_as_raster(occurrence.file = this.occurrence, 
+                                        data.mask = data.mask, 
+                                        occurrence.rast.dir = occurrence.rast.dir,
+                                        status.rast.dir = status.rast.dir,
+                                        species = this.code,
+                                        full.run = full.run)
   
+  cli_progress_done()
   return(list("SpeciesName" = this.species,
               "Code" = this.code,
               "status" = this.status,
               "reason" = this.reason,
               "IUCN.file" = this.iucn,
               "occurrence.file" = this.occurrence,
+              "occurrence.rast.file" = raster.files$occ,
+              "status.rast.file" = raster.files$status,
               "occurrence.summary" = this.summary,
               "fresh" = this.fresh))
   
@@ -276,6 +287,8 @@ extract_iucn <- function(this.species,
                          this.code, 
                          folder.iucn,
                          occurrence.dir, 
+                         occurrence.rast.dir, 
+                         status.rast.dir, 
                          project.name,
                          logfile,
                          overwrite) {
@@ -290,7 +303,6 @@ extract_iucn <- function(this.species,
     this.summary <- "failed"
     this.status <- "failed"
     this.iucn <- "failed"
-    this.occurrence <- "failed"
     this.fresh <- TRUE
     # more than min.gbif data
     iucn.try <- try({
@@ -309,6 +321,7 @@ extract_iucn <- function(this.species,
     }, silent = TRUE)
     
     if (inherits(iucn.try, "try-error")) {
+      this.occurrence <- "failed"
       this.reason <- "Could not retrieve IUCN information"
       this.iucn <- "failed"
       cli_progress_done()
@@ -319,7 +332,7 @@ extract_iucn <- function(this.species,
       
       this.iucn.df$SpeciesName <- this.species
       this.iucn.df$Code <- this.code
-      fwrite(this.iucn.df, file = this.occurrence)
+      fwrite(this.iucn.df, file = this.occurrence, showProgress = FALSE)
       
       ### Summary --------------------------
       n.list <- get_occurrence_summary(this.iucn.df)
@@ -344,7 +357,7 @@ extract_iucn <- function(this.species,
                                folder.iucn = param.gbif@folder.iucn.buffer,
                                filetype = '.tif')
     
-    this.occurrence.df <- fread(this.occurrence)
+    this.occurrence.df <- fread(this.occurrence, showProgress = FALSE)
     n.list <- get_occurrence_summary(this.occurrence.df)
     for (argi in names(n.list)) { assign(x = argi, value = n.list[[argi]]) }
     this.summary <- 
@@ -365,6 +378,16 @@ extract_iucn <- function(this.species,
     project.name = project.name,
     open = "a",
     silent = TRUE)
+  
+  # browser()
+  raster.files <- occurrences_as_raster(occurrence.file = this.occurrence, 
+                                        data.mask = data.mask, 
+                                        occurrence.rast.dir = occurrence.rast.dir,
+                                        status.rast.dir = status.rast.dir,
+                                        species = this.code,
+                                        full.run = full.run)
+  
+
   cli_progress_done()
   return(list("SpeciesName" = this.species,
               "Code" = this.code,
@@ -372,6 +395,8 @@ extract_iucn <- function(this.species,
               "reason" = this.reason,
               "IUCN.file" = this.iucn,
               "occurrence.file" = this.occurrence,
+              "occurrence.rast.file" = raster.files$occ,
+              "status.rast.file" = raster.files$status,
               "occurrence.summary" = this.summary,
               "fresh" = this.fresh))
   
@@ -399,6 +424,8 @@ extract_iucn <- function(this.species,
 assemble_trophic <- function(this.species, 
                              listcode,
                              file.occurrence.link,
+                             file.occurrence.rast.link,
+                             file.status.rast.link,
                              raw.dir,
                              param,
                              overwrite,
@@ -407,6 +434,7 @@ assemble_trophic <- function(this.species,
                              IUCN.link = IUCN.link){
   param.gbif <- param@param.gbif
   this.code <- listcode[this.species]
+  # browser()
   ### filter metaweb ---------------------
   this.metaweb <- 
     param@metaweb.raw %>% 
@@ -426,80 +454,66 @@ assemble_trophic <- function(this.species,
     (nrow(this.metaweb) > 0 && any(fresh.occurrence[this.metaweb$Prey_Name])) # any prey have been updated
   if (full.run) {
     this.fresh <- TRUE
-    this.occurrence <- fread(file.occurrence.link[this.species]) %>% 
+    this.occurrence <- fread(file.occurrence.link[this.species], showProgress = FALSE) %>% 
       filter(status == "certain") %>% 
       select(-status) 
     
-    if (subsample.assemble) {
-      this.occurrence <- subsample_dataset(this.occurrence, param.subsampling = param@param.subsampling)
-      this.occurrence <- filter(this.occurrence, subsample)
-    }
+    # if (subsample.assemble) {
+    #   this.occurrence <- subsample_dataset(this.occurrence, param.subsampling = param@param.subsampling)
+    #   this.occurrence <- filter(this.occurrence, subsample)
+    # }
     
     if (nrow(this.metaweb) == 0) {
       ### no prey ---------------------
       this.trophic <- this.occurrence 
-      fwrite(this.trophic, this.trophic.file)
+      fwrite(this.trophic, this.trophic.file, showProgress = FALSE)
     } else {
       # browser()
-      
+      this.occurrence.rast <- rast(file.occurrence.rast.link[this.species])
+      this.status.rast <- rast(file.status.rast.link[this.species])
+      this.occurrence.certain <- mask(this.occurrence.rast, this.status.rast, maskvalues = 0)
       ### with prey ---------------------
       all.prey <- this.metaweb$Prey_Name
+      all.code <- listcode[all.prey]
+      prey.groups <- 
+        trophic.groups %>% 
+        filter(Code %in% all.code) %>% 
+        select(Code, sppname, group)
       # this.prey <- first(this.metaweb$Prey_Name)
-      if (param.gbif@use.gbif) {
-        this.prey.list <- foreach(this.prey = all.prey) %do% {
-          fread(file.occurrence.link[this.prey]) %>% 
-            semi_join(this.occurrence, by = c("cell","x","y"))
-        }
-        this.prey.df <- rbindlist(this.prey.list)
-        rm(this.prey.list); gc();
-        this.prey.certain <- 
-          this.prey.df %>% 
-          group_by(cell,x,y) %>% 
-          summarize(percent_certain = length(which(status == "certain"))/n(),
-                    .groups = 'drop') %>% 
-          filter(percent_certain >= param.gbif@prop.prey.certain)
-        
-        this.prey.pivot <- 
-          this.prey.df %>% 
-          semi_join(this.prey.certain, by = c("cell","x","y")) %>% 
-          mutate(presence = ifelse(status == "certain", presence,
-                                   param.gbif@uncertain.value)) %>% 
-          select(-SpeciesName, -inside_iucn, -status) %>% 
-          pivot_wider(names_from = Code, values_from = presence)
-        rm(this.prey.df); gc()
-      } else { # IUCN method
-        this.prey.df <- foreach(this.prey = all.prey, .combine = 'rbind') %do% {
-          fread(file.occurrence.link[this.prey]) %>% 
-            semi_join(this.occurrence, by = c("cell","x","y"))
-        }
-        this.prey.certain <- 
-          this.prey.df %>% 
-          group_by(cell,x,y) %>% 
-          summarize(percent_certain = length(which(status == "certain"))/n(),
-                    .groups = 'drop') %>% 
-          filter(percent_certain >= param.gbif@prop.prey.certain)
-        
-        this.prey.pivot <- 
-          this.prey.df %>% 
-          semi_join(this.prey.certain, by = c("cell","x","y")) %>% 
-          mutate(presence = ifelse(status == "certain", presence,
-                                   param.gbif@uncertain.value)) %>% 
-          select(-SpeciesName, -inside_iucn, -status) %>% 
-          pivot_wider(names_from = Code, values_from = presence)
-        rm(this.prey.df); gc()
-        
+      # browser()
+      # Step 1: calculate mask with certain prey
+      this.status.rast <- foreach(this.prey = all.prey, .combine = 'c') %do% {
+        rast(file.status.rast.link[this.prey])
       }
+      # browser()
+      this.status <- app(this.status.rast, mean)
+      this.status.kept <- this.status >= param.gbif@prop.prey.certain
+      this.prey.mask <- mask(this.status.kept, 
+                             this.occurrence.certain)
+      
+      # browser()
+      this.covariates <- foreach(this.group = unique(prey.groups$group), .combine = 'c') %do% {
+        this.label <- paste0("group_",this.group)
+        this.prey.group <- filter(prey.groups, group %in% this.group)
+        this.group.rast <- foreach(this.prey = unique(this.prey.group$sppname), .combine = 'c') %do% {
+          rast(file.occurrence.rast.link[this.prey]) %>% 
+            mask(this.prey.mask)
+        }
+        this.sum.rast <- sum(this.group.rast,
+                             wopt = list(names = this.label))
+        this.sum.rast
+      } 
+      this.covariates.df <- as.data.frame(this.covariates, cells = TRUE, xy = TRUE)
       this.trophic <- 
-        right_join(this.occurrence, this.prey.pivot, 
-                   by = c("cell","x","y")) %>% 
+        this.occurrence %>% 
+        right_join(this.covariates.df, by = c("cell","x","y"))  %>% 
         mutate(subsample = TRUE)
-      rm(this.prey.pivot); gc()
-      rm(this.occurrence); gc()
-      fwrite(this.trophic, this.trophic.file)
+      rm(this.covariates.df, this.occurrence);gc();
+      fwrite(this.trophic, this.trophic.file, showProgress = FALSE)
     }
   } else {
     this.fresh <- FALSE
-    this.trophic <- fread(this.trophic.file)
+    this.trophic <- fread(this.trophic.file, showProgress = FALSE)
   }
   list("this.trophic" = this.trophic,
        "this.trophic.file" = this.trophic.file,

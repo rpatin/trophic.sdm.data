@@ -95,12 +95,18 @@ setMethod('show', signature('trophic_summary'),
 ##'   dataset generated throughout the function \code{\link{prepare_dataset}}:
 ##'   \itemize{
 ##'   \item Occurrence files (focal species only)
+##'   \item Occurrence files (as \code{\link{SpatRaster}})
+##'   \item Status files (as \code{\link{SpatRaster}})
 ##'   \item Raw trophic files (focal species and its prey)
 ##'   \item Final trophic files (final subsampled dataset)
 ##'   }
 ##'
 ##' @slot occurrence a named \code{vector} with a path to raw 
 ##' occurrence data for each species.
+##' @slot occurrence.rast a named \code{vector} with a path to raw raster 
+##' occurrence data for each species.
+##' @slot status.rast a named \code{vector} with a path to raster data 
+##' containing status of data (certain vs uncertain) for each species.
 ##' @slot trophic a named \code{vector} with a path to filtered
 ##' trophic data for each species.
 ##' @slot trophic.raw a named \code{vector} with a path to raw
@@ -110,6 +116,8 @@ setMethod('show', signature('trophic_summary'),
 
 setClass("trophic_files",
          representation(occurrence = "character",
+                        occurrence.rast = "character",
+                        status.rast = "character",
                         trophic = "character",
                         trophic.raw = "character"),
          validity = function(object){
@@ -769,9 +777,11 @@ the data inside IUCN range and a maximum of \\
 ##'   that remain after filtering of species.
 ##' @slot metaweb a \code{data.frame} with all species interactions 
 ##' that remain after filtering of species and prey.
+##' @slot trophic.groups a \code{data.frame}
 ##' @slot checklist.raw a \code{data.frame} with original information on all
 ##'   species
 ##' @slot metaweb.raw a \code{data.frame} with all original species interactions
+##' @slot trophic.groups.raw a \code{data.frame}
 ##' @slot param.gbif a \code{\link{param_gbif}} object with all parameters used
 ##'   to extract gbif data
 ##' @slot param.subsampling a \code{\link{param_subsampling}} object with all
@@ -785,8 +795,10 @@ the data inside IUCN range and a maximum of \\
 setClass("param_trophic",
          representation(checklist = "data.frame",
                         metaweb = "data.frame",
+                        trophic.groups = "data.frame",
                         checklist.raw = "data.frame",
                         metaweb.raw = "data.frame",
+                        trophic.groups.raw = "data.frame",
                         param.gbif = "param_gbif",
                         param.subsampling = "param_subsampling",
                         folder.iucn = "character"),
@@ -870,6 +882,7 @@ setClass("trophic_species",
                         filtered = "character",
                         kept.prey = "list",
                         filtered.prey = "list",
+                        species.method = "factor",
                         fresh.occurrence = "character",
                         fresh.trophic = "character"),
          validity = function(object){
@@ -898,9 +911,14 @@ setClass("trophic_species",
 setMethod('show', signature('trophic_species'),
           function(object)
           {
+            species.method <- object@species.method
             cli_h3("List of species used")
             cli_li("{length(object@kept)} species kept, {length(object@filtered)} filtered")
             cli_li("{length(unlist(object@kept.prey))} predator-prey interactions kept, {length(unlist(object@filtered.prey))} filtered")
+            cli_h3("Method used for species")
+            cli_li("{sapply(1:3, 
+       function(i){glue('{levels(species.method)[i]} ({table(species.method)[i]})')})
+}")
             invisible(NULL)
           })
 
@@ -1086,33 +1104,23 @@ the data inside IUCN range and a maximum of \\
                   #### write output and calculate summary ------------------------------------
                   
                   # write trophic.raw with subsampling info
-                  fwrite(this.raw, file = x@files@trophic.raw[this.species])
-                  this.nprey <- summary.trophic$nprey[this.index]   
-                  this.index <- which(summary.trophic$SpeciesName == this.species) 
-                  
+                  fwrite(this.raw, 
+                         file = x@files@trophic.raw[this.species],
+                         showProgress = FALSE)
+
                   # generate trophic files (subsampling + remove prey)
                   # remove subsampling
                   this.trophic <- filter(this.raw, subsample)
-                  # remove unnecessary prey
-                  this.filtered.prey <- listcode[names(x@species@filtered.prey[[this.species]])]
-                  this.to.remove <- which(this.filtered.prey %in% colnames(this.trophic))
-                  if (length(this.to.remove) > 0) {
-                    for (this.prey in this.to.remove) {
-                      this.trophic[,this.filtered.prey[this.prey]] <- NULL
-                    }
-                  }
+                  
                   # write trophic file
                   file.trophic <- paste0(project.name, "/trophic_dataset/", this.code,".csv.gz")
-                  fwrite(this.trophic, file = file.trophic)
+                  fwrite(this.trophic, 
+                         file = file.trophic, 
+                         showProgress = FALSE)
                   x@files@trophic[this.species] <- file.trophic
                   x@summary@trophic <- 
                     filter( x@summary@trophic, SpeciesName != this.species) %>% 
                     rbind(get_trophic_summary(this.trophic))
-                  if (this.nprey > 0) {
-                    x@summary@prey <- 
-                      filter(x@summary@prey, SpeciesName != this.species) %>% 
-                      rbind(get_prey_summary(this.trophic))
-                  }                   
                 }
                 cli_progress_done()
               }
@@ -1197,9 +1205,9 @@ setMethod('reset', signature(x = 'trophic_dataset'),
                 for (this.species in species.list) {
                   cli_progress_update()
                   this.file <- x@file.trophic.link[this.species]
-                  this.df <- fread(this.file)
+                  this.df <- fread(this.file, showProgress = FALSE)
                   this.df$subsample <- TRUE
-                  fwrite(this.df, this.file)
+                  fwrite(this.df, this.file, showProgress = FALSE)
                 }
                 cli_progress_done()
               }
@@ -1493,9 +1501,9 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
             this.species <- "Canis lupus" 
             foreach(this.species = names(listcode)) %dopar% {
               cli_progress_step(this.species)
-              
-              this.prey.filtered <- length(x@filtered.prey[[this.species]])
-              this.prey.kept <- length(x@kept.prey[[this.species]])
+              # browser()
+              this.prey.filtered <- length(x@species@filtered.prey[[this.species]])
+              this.prey.kept <- length(x@species@kept.prey[[this.species]])
               this.prey <- this.prey.filtered + this.prey.kept
               if (this.prey > 0) {
                 

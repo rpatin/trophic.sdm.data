@@ -149,6 +149,7 @@ calc_sampling_effort <- function(checklist, folder.gbif,
           open = "a",
           silent = TRUE
         )
+        # cli_progress_done()
         return(NULL)
       } else {
         this.output.vect <- vect(this.output,
@@ -162,12 +163,23 @@ calc_sampling_effort <- function(checklist, folder.gbif,
           paste0(store.dir,
                  this.code,
                  "_count.tif")
+        if(hasValues(this.output.rast)) {
         this.output.rast <- mask(this.output.rast,
                                  mask = data.mask,
                                  maskvalues = NA,
                                  filename = thisfilename,
                                  overwrite = TRUE,
                                  wopt = list(names = this.code))
+        } else {
+          .write_logfile(
+            out.log = paste0("Species ", this.species, " failed. Reason: No Values in rasterized data"),
+            logfile = "sampling.effort.failed.log",
+            project.name = project.name,
+            open = "a",
+            silent = TRUE
+          )
+          return(NULL)
+        }
         # terra::plot(this.output.rast, colNA = "blue")
         # cli_progress_done()
         return(wrap(this.output.rast))
