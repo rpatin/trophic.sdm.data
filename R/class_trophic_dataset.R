@@ -1073,7 +1073,7 @@ the data inside IUCN range and a maximum of \\
               
               
               
-              summary.trophic <- x@summary@trophic  %>% 
+              summary.trophic <- x@summary.raw@trophic  %>% 
                 mutate(
                   aim_presence = pmin(presence, param.subsampling@max.presences),
                   aim_absence_inside = pmin(presence, param.subsampling@max.absences.inside),
@@ -1093,13 +1093,15 @@ the data inside IUCN range and a maximum of \\
               if (nrow(summary.trophic) == 0) {
                 cli_alert_success("No species require subsampling")
               } else {
-                this.species <- "Ardea cinerea"
+                this.species <- "Cervus elaphus"
                 for (this.species in summary.trophic$SpeciesName) {
                   cli_progress_step(this.species)
                   this.code <- listcode[this.species]
                   # browser()
-                  this.raw <- load_data(x, SpeciesName = this.species, type = "trophic.raw")
-                  
+                  this.raw <- load_data(x,
+                                        SpeciesName = this.species,
+                                        type = "trophic.raw")
+                  this.raw$status <- "certain"
                   this.raw <- subsample_dataset(this.raw, param.subsampling)
                   #### write output and calculate summary ------------------------------------
                   
@@ -1331,6 +1333,7 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
             possible_info <- c("summary.occurrence",
                                "summary.uncertain",
                                "summary.trophic",
+                               "summary.trophic.raw",
                                "summary.prey",
                                "summary.protected",
                                "metaweb",
@@ -1356,6 +1359,8 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
               return(output)
             } else if (info == "summary.trophic") {
               return(x@summary@trophic)
+            } else if (info == "summary.trophic.raw") {
+              return(x@summary.raw@trophic)
             } else if (info == "summary.prey") {
               return(x@summary@prey)
             } else if (info == "summary.filter") {
@@ -1620,7 +1625,7 @@ setMethod('plot_dataset', signature(x = 'trophic_dataset'),
             if (type == "trophic") {
               summary.trophic <- summary_trophic(x, info = "summary.trophic")  
             } else {
-              summary.trophic <- x@param.raw$summary.predator.raw
+              summary.trophic <- summary_trophic(x, info = "summary.trophic.raw")  
             }
             this.species <- "Ardea cinerea" 
             foreach(this.species = names(listcode)) %dopar% {
