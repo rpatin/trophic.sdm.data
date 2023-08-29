@@ -4,19 +4,17 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 <!-- [![](https://www.r-pkg.org/badges/version/segclust2d?color=orange)](https://cran.r-project.org/package=segclust2d) -->
 <!-- [![](http://cranlogs.r-pkg.org/badges/grand-total/segclust2d?color=yellow)](https://cran.r-project.org/package=segclust2d) -->
 
-[![](https://img.shields.io/badge/devel%20version-0.0.5-blue.svg)](https://github.com/rpatin/trophic.sdm.data)
+[![](https://img.shields.io/badge/devel%20version-0.1.0-blue.svg)](https://github.com/rpatin/trophic.sdm.data)
 [![](https://img.shields.io/github/last-commit/rpatin/trophic.sdm.data.svg)](https://github.com/rpatin/trophic.sdm.data/commits/main)
 
 # Introduction
 
 # News
 
-## v0.0.6
+## v0.1.0 First Release (29/08/2023)
 
-### Upcoming features
-
-- evaluations
-- splitting of trophic group in metaweb
+- Fixed and completed documentation
+- Bugfix to summary function
 
 ## v0.0.5 (pre-release)
 
@@ -79,7 +77,7 @@ trophic.sdm.data: preparing data for European Vertebrates trophic SDM
 # Installation
 
 If you want the newest
-[![](https://img.shields.io/badge/devel%20version-0.0.5-blue.svg)](https://github.com/rpatin/trophic.sdm.data),
+[![](https://img.shields.io/badge/devel%20version-0.1.0-blue.svg)](https://github.com/rpatin/trophic.sdm.data),
 you can install `trophic.sdm.data` from github with:
 
 ``` r

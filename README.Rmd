@@ -19,10 +19,9 @@ library(badger)
 
 
 # News 
-## v0.0.6
-### Upcoming features
-- evaluations
-- splitting of trophic group in metaweb
+## v0.1.0 First Release (29/08/2023)
+- Fixed and completed documentation
+- Bugfix to summary function
 
 ## v0.0.5 (pre-release)
 ### Features
