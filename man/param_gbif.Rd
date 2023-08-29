@@ -26,6 +26,37 @@ set_param_gbif(
 \S4method{show}{param_gbif}(object)
 }
 \arguments{
+\item{use.gbif}{a \code{logical}, whether gbif was used or not}
+
+\item{folder.gbif}{a \code{character}: folders in which gbif data are stored}
+
+\item{min.gbif}{a \code{integer}, the minimum number of gbif occurrences}
+
+\item{filter.atlas}{a \code{booelan}, whether atlas data should be filtered
+out (through column \code{coordinateUncertaintyInMeters})}
+
+\item{buffer.config}{a \code{list}, the configuration for iucn buffer}
+
+\item{folder.iucn.buffer}{a \code{character}, folder in which IUCN range
+are stored as raster files.}
+
+\item{sampling.effort}{a \code{sampling_effort} object describing the sampling
+effort associated to all taxa.}
+
+\item{quantile.absence.certain}{a \code{numeric} (\emph{default}
+\code{0.1}), between 0 and 1. The quantile of sampling effort below which
+a species absence is considered as uncertain}
+
+\item{prop.prey.certain}{a \code{numeric} (\emph{default} \code{0.8}),
+between 0 and 1. The minimum proportion of prey occurrence considered as
+certain for a raster cell to be included in the species dataset.}
+
+\item{uncertain.value}{a \code{integer} (\code{0} or \code{1} ;
+\emph{default} \code{0}). The value given to uncertain absences in cells
+where more than \code{prop.prey.certain} prey are considered as certain.}
+
+\item{backup.iucn}{a \code{\link{backup_iucn}} object}
+
 \item{...}{additionnal parameters given to \code{\link{set_backup_iucn}}}
 
 \item{object}{an object of class \code{param_gbif}}

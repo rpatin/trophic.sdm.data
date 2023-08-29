@@ -19,14 +19,6 @@ in the project}
 and data may be written}
 
 \item{nb.cpu}{number of CPU to use}
-
-\item{list.iucn}{a named list of IUCN shapefile path. Name must be Amphibia_Old,
-Amphibia_New, Mammalia_Old, Mammalia_New, Reptilia_Old, Reptilia_New, Aves.}
-
-\item{buffer.config}{a named \code{list} with taxonomic groups (Class, Order,
-Family, Species) and associated distance that will be used to buffer IUCN
-range. If several taxonomic groups are valid for a given species, the
-lowest one will be prioritized. Buffer distances are given in km.}
 }
 \description{
 \code{buffer_iucn} get the IUCN polygons for each class (old 

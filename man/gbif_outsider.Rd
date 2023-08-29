@@ -40,6 +40,11 @@ summary_outsider(object, type = "Class")
 \item{folder.iucn}{a \code{character}: folders in which IUCN distributions
 are stored}
 
+\item{filter.atlas}{a \code{boolean}, whether atlas data should be filtered.
+The method only exclude data with precision <10km in the gbif dataset. It is
+not quite reliable as many atlas data are registered with a very high 
+precision, despite describing squares of 25km side.}
+
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
@@ -53,6 +58,12 @@ the level of conflict that needs to be summarised}
 \item{x}{a \code{gbif_outsider} object}
 
 \item{plot.folder}{a path to store plot results when \code{type = "Species"}}
+
+\item{buffer.config}{a named \code{list} describing the grouping of taxa to 
+be used for the buffering.}
+
+\item{species.buffer}{a named \code{list} describing the buffer used for each 
+taxa group}
 }
 \description{
 Class returned by \code{\link{detect_gbif_outsider}}, 

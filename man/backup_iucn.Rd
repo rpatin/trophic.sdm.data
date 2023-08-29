@@ -21,6 +21,25 @@ set_backup_iucn(
 \S4method{show}{backup_iucn}(object)
 }
 \arguments{
+\item{do.backup}{a \code{logical} whether backup was activated or not}
+
+\item{min.occurrence}{a \code{integer}, the minimum number of gbif occurrences}
+
+\item{min.threshold.effort}{a \code{integer}, the minimum sampling effort
+threshold}
+
+\item{max.prop.own}{a \code{numeric}, the maximum proportion of uncertain
+cells within its own range}
+
+\item{max.prop.predator}{a \code{numeric}, the maximum proportion of
+uncertain cells within its predators range}
+
+\item{max.prop.predator.outside}{a \code{numeric}, the maximum proportion of
+uncertain cells outside its predators range}
+
+\item{quantile.prop.predator}{a \code{numeric}, used to aggregate information
+accross several predators.}
+
 \item{object}{an object of class \code{backup_iucn}}
 }
 \description{

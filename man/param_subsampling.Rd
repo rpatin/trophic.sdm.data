@@ -20,6 +20,22 @@ set_param_subsampling(
 \S4method{show}{param_subsampling}(object)
 }
 \arguments{
+\item{method}{a \code{logical}, whether gbif was used or not}
+
+\item{max.presences}{a \code{integer} maximum number of presences}
+
+\item{max.absences.inside}{a \code{integer} maximum number of absences inside
+IUCN range}
+
+\item{min.absences.outside}{a \code{integer} minimum number of absences
+outside IUCN range}
+
+\item{max.absences.outside}{a \code{integer} maximum number of absences
+outside IUCN range}
+
+\item{prop.outside}{a \code{numeric}, target proportion of
+absences outside IUCN range (relative to total data within IUCN range)}
+
 \item{object}{an object of class \code{param_subsampling}}
 }
 \description{

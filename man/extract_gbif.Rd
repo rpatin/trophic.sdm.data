@@ -8,6 +8,7 @@ extract_gbif(
   this.species,
   this.code,
   param.gbif,
+  data.mask,
   occurrence.dir,
   occurrence.rast.dir,
   status.rast.dir,
@@ -23,12 +24,24 @@ extract_gbif(
 
 \item{param.gbif}{a \code{param_gbif} gbif configuration}
 
+\item{data.mask}{a \code{SpatRaster} with the extent and the grid used 
+in the project}
+
 \item{occurrence.dir}{a \code{character}, folder to store occurrence data}
+
+\item{occurrence.rast.dir}{a \code{character}, folder to store occurrence 
+raster files.}
+
+\item{status.rast.dir}{a \code{character}, folder to store data status 
+raster files.}
 
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
 \item{logfile}{a \code{character}, file to store logs}
+
+\item{overwrite}{a \code{boolean}, whether occurrence dataset should be 
+overwritten.}
 }
 \description{
 \code{extract_gbif} retrieve gbif data from files with a given 
