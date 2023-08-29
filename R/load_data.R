@@ -8,6 +8,8 @@
 ##' 
 ##' @inheritParams gbif_outsider
 ##' @param species.name a \code{character} corresponding to the species name
+##' @param all.columns a \code{boolean}, whether all columns should be returned 
+##' or not.
 ##' @return a data.frame or a character if the loading failed
 ##' @export
 ##' @importFrom data.table fread

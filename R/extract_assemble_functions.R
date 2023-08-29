@@ -16,10 +16,17 @@
 ##' @param param.gbif a \code{param_gbif} gbif configuration
 ##' @param occurrence.dir a \code{character}, folder to store occurrence data
 ##' @param logfile a \code{character}, file to store logs
+##' @param overwrite a \code{boolean}, whether occurrence dataset should be 
+##' overwritten.
+##' @param occurrence.rast.dir a \code{character}, folder to store occurrence 
+##' raster files.
+##' @param status.rast.dir a \code{character}, folder to store data status 
+##' raster files.
 
 extract_gbif <- function(this.species,
                          this.code, 
                          param.gbif,
+                         data.mask,
                          occurrence.dir, 
                          occurrence.rast.dir, 
                          status.rast.dir, 
@@ -142,8 +149,8 @@ extract_gbif <- function(this.species,
           index.uncertain <- which(this.occurrence.df$presence == 0 &
                                      this.occurrence.df$inside_iucn) 
           if (length(index.uncertain) > 0) {
-            this.effort.layer <- sampling.effort@species.layer[[this.species]]
-            this.effort.rast <- rast(sampling.effort@data)[[this.effort.layer]]
+            this.effort.layer <- param.gbif@sampling.effort@species.layer[[this.species]]
+            this.effort.rast <- rast(param.gbif@sampling.effort@data)[[this.effort.layer]]
             this.quantile <-
               param.gbif@quantile.absence.certain
             # extract threshold to caracterize absence certainty
@@ -277,14 +284,17 @@ extract_gbif <- function(this.species,
 ##' configuration
 ##'
 ##' @inheritParams trophic_dataset
-##' @param this.species a \code{character}: species name
-##' @param this.code a \code{character}: species code
+##' @inheritParams extract_gbif
 ##' @param folder.iucn a \code{character}, folder with IUCN distribution as raster
-##' @param occurrence.dir a \code{character}, folder to store occurrence data
-##' @param logfile a \code{character}, file to store logs
+##' @param occurrence.rast.dir a \code{character}, folder to store occurrence 
+##' raster files.
+##' @param status.rast.dir a \code{character}, folder to store data status 
+##' raster files.
+
 
 extract_iucn <- function(this.species,
                          this.code, 
+                         data.mask = data.mask,
                          folder.iucn,
                          occurrence.dir, 
                          occurrence.rast.dir, 
@@ -354,7 +364,7 @@ extract_iucn <- function(this.species,
     this.fresh <- FALSE
     this.iucn <-
       locate_iucn_distribution(species.code = this.code,
-                               folder.iucn = param.gbif@folder.iucn.buffer,
+                               folder.iucn = folder.iucn,
                                filetype = '.tif')
     
     this.occurrence.df <- fread(this.occurrence, showProgress = FALSE)
@@ -414,13 +424,28 @@ extract_iucn <- function(this.species,
 ##' @description \code{extract_iucn} retrieve IUCN data from files with a given 
 ##' configuration
 ##'
-##' @inheritParams trophic_dataset
-##' @param this.species a \code{character}: species name
-##' @param this.code a \code{character}: species code
-##' @param folder.iucn a \code{character}, folder with IUCN distribution as raster
-##' @param occurrence.dir a \code{character}, folder to store occurrence data
-##' @param logfile a \code{character}, file to store logs
-
+##' @param this.species a \code{character}: current species name
+##' @param listcode a named \code{character} vector: all species code
+##' @param file.occurrence.link a \code{character} vector, links to
+##'  occurrence files
+##' @param file.occurrence.rast.link a \code{character} vector, links 
+##' to occurrence files as raster
+##' @param file.status.rast.link a \code{character} vector, links 
+##' to data status files as raster (certain or uncertain data)
+##' @param raw.dir a \code{character} vector, folder in which to store raw 
+##' (not subsampled) trophic dataset
+##' @param param a \code{\link{param_trophic}} object with all parameters
+##' @param overwrite a \code{boolean}. When TRUE, all trophic dataset are 
+##' recalculated. When FALSE, only trophic dataset for which prey or predator data
+##' were refreshed are recalculated.
+##' @param fresh.occurrence a named \code{boolean} vector, describing which 
+##' species occurrence were updated.
+##' @param subsample.assemble a \code{boolean}, whether some subsampling 
+##' occurs before assembling the trophic dataset.
+##' @param trophic.groups a \code{data.frame}, describing the trophic groups
+##' @param IUCN.link a named \code{character} vector, with links to species
+##' IUCN data.
+##' @importFrom terra app
 assemble_trophic <- function(this.species, 
                              listcode,
                              file.occurrence.link,
@@ -431,7 +456,8 @@ assemble_trophic <- function(this.species,
                              overwrite,
                              fresh.occurrence,
                              subsample.assemble,
-                             IUCN.link = IUCN.link){
+                             trophic.groups,
+                             IUCN.link){
   param.gbif <- param@param.gbif
   this.code <- listcode[this.species]
   # browser()

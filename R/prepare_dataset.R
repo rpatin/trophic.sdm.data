@@ -4,10 +4,25 @@
 ##' @rdname trophic_dataset
 ##' @export
 ##' @inheritParams .register_cluster
+##' @inheritParams assemble_trophic
+##' @param ... additional argument transmitted to further functions
+##' @param param.subsampling a \code{\link{param_subsampling}} class object
+##' describing the parameterization of subsampling
+##' @param use.gbif a \code{boolean}. If \code{FALSE}, use only IUCN data to 
+##' build the dataset.
+##' @param param.gbif a \code{\link{param_gbif}} class object describing the 
+##' parameter used to extract gbif data.
+##' @param overwrite.occurrence a \code{boolean}. If \code{FALSE}, only the
+##' species for which the occurrence file does not exist are processed for 
+##' building the occurrence dataset
+##' @param overwrite.trophic a \code{boolean}. If \code{FALSE}, only the
+##' species for which the trophic file does not exist are processed for 
+##' building the trophic dataset
 ##' @importFrom terra focal rast vect extract crs
-##' @importFrom dplyr rename filter semi_join select mutate first summarize
+##' @importFrom dplyr rename filter semi_join select mutate first summarize join_by
 ##' @importFrom tidyr pivot_wider
 ##' @importFrom data.table fwrite fread
+##' @importFrom methods validObject
 
 prepare_dataset <- function(checklist, 
                             metaweb,
@@ -78,6 +93,7 @@ prepare_dataset <- function(checklist,
       gbif.output <- extract_gbif(this.species,
                                   this.code,
                                   param.gbif, 
+                                  data.mask = data.mask,
                                   occurrence.dir = occurrence.dir,
                                   occurrence.rast.dir = occurrence.rast.dir,
                                   status.rast.dir = status.rast.dir,
@@ -86,8 +102,9 @@ prepare_dataset <- function(checklist,
                                   overwrite = overwrite.occurrence) 
       if(activate_backup(gbif.output, param.gbif@backup.iucn)) {
         cli_alert_info("activate IUCN backup for {this.species}")
-        gbif.output<- extract_iucn(this.species, 
+        gbif.output <- extract_iucn(this.species, 
                                    this.code, 
+                                   data.mask = data.mask,
                                    folder.iucn = param@folder.iucn, 
                                    occurrence.dir = occurrence.dir,
                                    occurrence.rast.dir = occurrence.rast.dir,
@@ -100,6 +117,7 @@ prepare_dataset <- function(checklist,
     } else {
       iucn.output <- extract_iucn(this.species, 
                                   this.code, 
+                                  data.mask = data.mask,
                                   folder.iucn = param@folder.iucn, 
                                   occurrence.dir = occurrence.dir,
                                   occurrence.rast.dir = occurrence.rast.dir,
@@ -228,6 +246,7 @@ prepare_dataset <- function(checklist,
                               overwrite = overwrite.trophic,
                               fresh.occurrence = fresh.occurrence,
                               subsample.assemble =  subsample.assemble,
+                              trophic.groups = trophic.groups,
                               IUCN.link = IUCN.link)
       this.trophic <- tmp$this.trophic
       this.trophic.file <- tmp$this.trophic.file

@@ -167,6 +167,7 @@
 ##' species name
 ##' @inheritParams trophic_dataset
 ##' @return a boolean
+##' @importFrom dplyr inner_join
 
 .check_metaweb_checklist <- function(metaweb, checklist){
   metaweb.name <- deparse(substitute(metaweb))
@@ -830,12 +831,12 @@ subsample_dataset <- function(df, param.subsampling){
 ##' @title Write occurrences and data status as raster
 ##' 
 ##' @description Write occurrences and data status as raster
-##' @param occurrence.file file with species
-##' @param data.mask a \code{SpatRaster}, mask used for rasterization
 ##' @param occurrence.rast.dir a \code{character}, folder to store occurrence 
 ##' raster files.
 ##' @param status.rast.dir a \code{character}, folder to store data status 
 ##' raster files.
+##' @param occurrence.file file with species
+##' @param data.mask a \code{SpatRaster}, mask used for rasterization
 ##' @param species a \code{character}, code of current species.
 ##' @param full.run a \code{boolean}, whether raster should be saved or only 
 ##' filenames should be returned

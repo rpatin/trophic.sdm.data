@@ -70,6 +70,15 @@ setClass("gbif_outsider",
 ##' @importFrom dplyr mutate first
 ##' @importFrom stats quantile median
 ##' @importFrom utils capture.output
+##' @param filter.atlas a \code{boolean}, whether atlas data should be filtered.
+##' The method only exclude data with precision <10km in the gbif dataset. It is
+##' not quite reliable as many atlas data are registered with a very high 
+##' precision, despite describing squares of 25km side.
+##' @param buffer.config a named \code{list} describing the grouping of taxa to 
+##' be used for the buffering.
+##' @param species.buffer a named \code{list} describing the buffer used for each 
+##' taxa group
+##' 
 
 
 

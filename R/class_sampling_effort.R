@@ -27,6 +27,8 @@
 ##' @slot checklist a \code{data.frame} with information on all species of interest
 ##' @slot project.name a \code{character} indicating the folder in which logfiles 
 ##' and data may be written
+##' @slot filled a \code{boolean}, whether or not the object is empty of filled 
+##' with data
 ##' 
 ##' @examples
 ##' 
@@ -69,7 +71,7 @@ setClass("sampling_effort",
 ##' @importFrom cli cli_progress_step cli_progress_done cli_h1 cli_alert_danger cli_h2
 ##' cli_process_failed cli_alert_info
 ##' @importFrom foreach "%do%" "%dopar%" foreach
-##' @importFrom terra vect project rasterize mask wrap unwrap
+##' @importFrom terra vect project rasterize mask wrap unwrap hasValues
 ##' @importFrom methods new
 
 calc_sampling_effort <- function(checklist, folder.gbif, 
