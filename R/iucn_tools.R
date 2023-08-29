@@ -383,6 +383,7 @@ buffer_iucn <- function(checklist,
 ##'   lowest one will be prioritized. Buffer distances are given in km.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
 ##' @return a named list with the buffer associated to each species
+##' @export
 
 get_species_buffer <- function(buffer.config, checklist){
   .check_checklist(checklist)
