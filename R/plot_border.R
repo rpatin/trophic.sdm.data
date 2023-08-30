@@ -20,7 +20,7 @@
 ##' @importFrom ggplot2 ggplot scale_fill_brewer ggtitle
 ##' @importFrom cowplot save_plot
 ##' @importFrom cli cli_progress_step cli_progress_done
-
+##' @export
 map_effort <- function(project.name, vector_data, data.mask, suffix){
   
   
