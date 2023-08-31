@@ -1162,7 +1162,7 @@ the data inside IUCN range and a maximum of \\
               }
               cli_alert_success("All species subsampled")
             }
-            saveRDS(x, file = paste0(x@project.name,"/",x@project.name,".trophic_dataset.rds"))
+            saveRDS(x, file = paste0(x@project.name,"/trophic_dataset.rds"))
             x
           })
 
@@ -1338,7 +1338,7 @@ setMethod('reset', signature(x = 'trophic_dataset'),
             #   browser()
             # }
             
-            saveRDS(x, file = paste0(x@project.name,"/",x@project.name,".trophic_dataset.rds"))
+            saveRDS(x, file = paste0(x@project.name,"/trophic_dataset.rds"))
             return(x)
           })
 

@@ -428,7 +428,7 @@ prepare_dataset <- function(checklist,
   # fill data.mask and project.name
   output@project.name <- project.name
   output@data.mask <- wrap(data.mask)
-  saveRDS(output, file = paste0(project.name,"/",project.name,".trophic_dataset.rds"))
+  saveRDS(output, file = paste0(project.name,"/trophic_dataset.rds"))
   validObject(output)
   
   ## Step 3 - Subsample & Filter output ---------------------------------------

@@ -242,7 +242,7 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
 load_dataset <- function(project.name){
   .fun_testIfInherits(project.name, 'character')
   .fun_testIfDirExists(project.name)
-  this.file <- paste0(project.name,"/",project.name,".trophic_dataset.rds")
+  this.file <- paste0(project.name,"/trophic_dataset.rds")
   if (file.exists(this.file)) {
     return(readRDS(this.file))
   } else {
