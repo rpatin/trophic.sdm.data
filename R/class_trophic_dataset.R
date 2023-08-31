@@ -1451,7 +1451,7 @@ setGeneric("plot_uncertain", def = function(x, ...) {
 ##' @importFrom cowplot save_plot
 
 setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
-          function(x, nb.cpu = 1){
+          function(x, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             has.cluster <- .register_cluster(nb.cpu)
@@ -1483,7 +1483,7 @@ setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
                 filter(inside_iucn) %>% 
                 mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
               g <- ggplot() +
-                geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                 geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                 scale_fill_manual(
                   "IUCN distribution",
@@ -1523,7 +1523,7 @@ setGeneric("plot_trophic", def = function(x, ...) {
 ##' @importFrom dplyr anti_join
 
 setMethod('plot_trophic', signature(x = 'trophic_dataset'),
-          function(x, nb.cpu = 1){
+          function(x, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             has.cluster <- .register_cluster(nb.cpu)
@@ -1595,7 +1595,7 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
                                      this.prey.filtered, "/", this.prey)
                 
                 g <- ggplot() +
-                  geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                  geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                   geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                   geom_tile(data = this.trophic.filtered, aes(x = x, y = y, fill = datatype)) +
                   scale_fill_manual(
@@ -1643,7 +1643,7 @@ setGeneric("plot_dataset", def = function(x, ...) {
 ##' @importFrom dplyr anti_join
 
 setMethod('plot_dataset', signature(x = 'trophic_dataset'),
-          function(x, type, nb.cpu = 1){
+          function(x, type, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             .fun_testIfIn(type, c("trophic", "trophic.raw"))
@@ -1694,7 +1694,7 @@ setMethod('plot_dataset', signature(x = 'trophic_dataset'),
                                    " and ", this.abs.outside, " (outside)")
               
               g <- ggplot() +
-                geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                 geom_point(data = this.df, aes(x = x, y = y, color = presence_plot), size = 0.1) +
                 scale_color_manual(
                   NULL,
