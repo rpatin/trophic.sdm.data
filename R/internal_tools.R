@@ -167,6 +167,7 @@
 ##' species name
 ##' @inheritParams trophic_dataset
 ##' @return a boolean
+##' @importFrom dplyr inner_join
 
 .check_metaweb_checklist <- function(metaweb, checklist){
   metaweb.name <- deparse(substitute(metaweb))
@@ -740,10 +741,17 @@ set_folder <- function(project.name){
   if (!dir.exists(raw.dir)) dir.create(raw.dir, recursive = TRUE, showWarnings = FALSE)
   occurrence.dir <- paste0(project.name, "/occurrence_dataset/")
   if (!dir.exists(occurrence.dir)) dir.create(occurrence.dir, recursive = TRUE, showWarnings = FALSE)
+  occurrence.rast.dir <- paste0(project.name, "/occurrence_dataset_raster/")
+  if (!dir.exists(occurrence.rast.dir)) dir.create(occurrence.rast.dir, recursive = TRUE, showWarnings = FALSE)
+  status.rast.dir <- paste0(project.name, "/certainty_status_dataset/")
+  if (!dir.exists(status.rast.dir)) dir.create(status.rast.dir, recursive = TRUE, showWarnings = FALSE)
+  
   return(list(
     "dataset.dir" = dataset.dir,
     "raw.dir" = raw.dir,
-    "occurrence.dir" = occurrence.dir
+    "occurrence.dir" = occurrence.dir,
+    "occurrence.rast.dir" = occurrence.rast.dir,
+    "status.rast.dir" = status.rast.dir
   ))
 }
 
@@ -813,4 +821,97 @@ subsample_dataset <- function(df, param.subsampling){
     }
   }
   return(df)
+}
+
+
+
+# occurrences_as_raster ---------------------------------------------------
+##' @name occurrences_as_raster
+##' 
+##' @title Write occurrences and data status as raster
+##' 
+##' @description Write occurrences and data status as raster
+##' @param occurrence.rast.dir a \code{character}, folder to store occurrence 
+##' raster files.
+##' @param status.rast.dir a \code{character}, folder to store data status 
+##' raster files.
+##' @param occurrence.file file with species
+##' @param data.mask a \code{SpatRaster}, mask used for rasterization
+##' @param species a \code{character}, code of current species.
+##' @param full.run a \code{boolean}, whether raster should be saved or only 
+##' filenames should be returned
+##' @return a \code{list} with links to status and occurrence raster file
+##' @export
+
+occurrences_as_raster <- function(occurrence.file, data.mask, occurrence.rast.dir, status.rast.dir, species, full.run){
+  if(occurrence.file == "failed") {
+    return(list("occ" = "failed",
+                "status" = "failed")) 
+  } else {
+    file.status <- paste0(status.rast.dir,"/",species,".status.tif")
+    file.occ <- paste0(occurrence.rast.dir,"/",species,".occurrence.tif")
+    if (full.run | !file.exists(file.status) | !file.exists(file.occ)) { 
+      this.occ <- 
+        fread(occurrence.file, showProgress = FALSE) %>% 
+        mutate(certain = ifelse(status == "certain", 1, 0)) %>% 
+        vect(geom = c("x","y"))
+      
+      this.rast.certain <-
+        rasterize(this.occ,  data.mask,
+                  field = "certain", background = 0) %>% 
+        mask(data.mask,
+             filename = file.status,
+             overwrite = TRUE)
+      
+      this.rast.presence <-
+        rasterize(this.occ,  data.mask,
+                  field = "presence", background = 0) %>% 
+        mask(data.mask,
+             filename = file.occ,
+             overwrite = TRUE)
+    }
+    return(list(occ = file.occ,
+                status = file.status))
+  }
+}
+
+# activate_backup ---------------------------------------------------
+##' @name activate_backup
+##' 
+##' @title Check IUCN backup
+##' 
+##' @description Check whether IUCN Backup should be activated or not
+##' @param gbif.output gbif.output object
+##' @param backup.iucn backup.iucn object
+##' @return a \code{boolean} 
+##' @export
+
+activate_backup <- function(gbif.output, backup.iucn){
+  if(backup.iucn@do.backup) {
+    # criterion 1: gbif failed
+    if(gbif.output$status == "failed") {
+      return(TRUE)
+    }
+    occ.summary <- gbif.output$occurrence.summary
+    # criterion 2: # of presences
+    if (occ.summary$presence < backup.iucn@min.occurrence) {
+      return(TRUE)
+    }
+    # criterion 3: threshold of certainty
+    if (!is.na(occ.summary$threshold.certain) &
+        occ.summary$threshold.certain < backup.iucn@min.threshold.effort) {
+      return(TRUE)
+    }
+    # criterion 4: prop. of uncertain cells within IUCN range
+    prop.uncertain <- 
+      occ.summary$absence.inside.uncertain /
+      (occ.summary$presence + 
+         occ.summary$absence.inside.certain +
+         occ.summary$absence.inside.uncertain)
+    if (prop.uncertain > backup.iucn@max.prop.own) {
+      return(TRUE)
+    }
+  }
+  # no backup
+  return(FALSE) 
 }

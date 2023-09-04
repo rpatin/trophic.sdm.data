@@ -95,12 +95,18 @@ setMethod('show', signature('trophic_summary'),
 ##'   dataset generated throughout the function \code{\link{prepare_dataset}}:
 ##'   \itemize{
 ##'   \item Occurrence files (focal species only)
+##'   \item Occurrence files (as \code{\link{SpatRaster}})
+##'   \item Status files (as \code{\link{SpatRaster}})
 ##'   \item Raw trophic files (focal species and its prey)
 ##'   \item Final trophic files (final subsampled dataset)
 ##'   }
 ##'
 ##' @slot occurrence a named \code{vector} with a path to raw 
 ##' occurrence data for each species.
+##' @slot occurrence.rast a named \code{vector} with a path to raw raster 
+##' occurrence data for each species.
+##' @slot status.rast a named \code{vector} with a path to raster data 
+##' containing status of data (certain vs uncertain) for each species.
 ##' @slot trophic a named \code{vector} with a path to filtered
 ##' trophic data for each species.
 ##' @slot trophic.raw a named \code{vector} with a path to raw
@@ -110,6 +116,8 @@ setMethod('show', signature('trophic_summary'),
 
 setClass("trophic_files",
          representation(occurrence = "character",
+                        occurrence.rast = "character",
+                        status.rast = "character",
                         trophic = "character",
                         trophic.raw = "character"),
          validity = function(object){
@@ -209,7 +217,19 @@ setClass("backup_iucn",
 ##' 
 ##' @rdname backup_iucn
 ##' @export
-##' 
+##' @param do.backup a \code{logical} whether backup was activated or not
+##' @param min.occurrence a \code{integer}, the minimum number of gbif occurrences
+##' @param min.threshold.effort a \code{integer}, the minimum sampling effort
+##'   threshold
+##' @param max.prop.own a \code{numeric}, the maximum proportion of uncertain
+##'   cells within its own range
+##' @param max.prop.predator  a \code{numeric}, the maximum proportion of
+##'   uncertain cells within its predators range
+##' @param max.prop.predator.outside  a \code{numeric}, the maximum proportion of
+##'   uncertain cells outside its predators range
+##' @param quantile.prop.predator a \code{numeric}, used to aggregate information
+##' accross several predators.
+##' @importFrom methods validObject
 
 set_backup_iucn <- function(do.backup,
                             min.occurrence,
@@ -402,8 +422,28 @@ setClass("param_gbif",
 ##' 
 ##' @rdname param_gbif
 ##' @param ... additionnal parameters given to \code{\link{set_backup_iucn}}
+##' @param use.gbif a \code{logical}, whether gbif was used or not
+##' @param folder.gbif a \code{character}: folders in which gbif data are stored
+##' @param min.gbif a \code{integer}, the minimum number of gbif occurrences
+##' @param filter.atlas a \code{booelan}, whether atlas data should be filtered
+##'  out (through column \code{coordinateUncertaintyInMeters})
+##' @param buffer.config a \code{list}, the configuration for iucn buffer
+##' @param folder.iucn.buffer  a \code{character}, folder in which IUCN range
+##' are stored as raster files.
+##' @param quantile.absence.certain a \code{numeric} (\emph{default}
+##'   \code{0.1}), between 0 and 1. The quantile of sampling effort below which
+##'   a species absence is considered as uncertain
+##' @param prop.prey.certain a \code{numeric} (\emph{default} \code{0.8}),
+##'   between 0 and 1. The minimum proportion of prey occurrence considered as
+##'   certain for a raster cell to be included in the species dataset.
+##' @param uncertain.value a \code{integer} (\code{0} or \code{1} ;
+##'   \emph{default} \code{0}). The value given to uncertain absences in cells
+##'   where more than \code{prop.prey.certain} prey are considered as certain.
+##' @param backup.iucn a \code{\link{backup_iucn}} object
+##' @param sampling.effort a \code{sampling_effort} object describing the sampling
+##' effort associated to all taxa.
+##' @importFrom methods validObject
 ##' @export
-##' 
 
 set_param_gbif <- function(use.gbif,
                            folder.gbif,
@@ -642,6 +682,17 @@ setClass("param_subsampling",
 ##' @rdname param_subsampling
 ##' @export
 ##' 
+##' @importFrom methods validObject
+##' @param method a \code{logical}, whether gbif was used or not
+##' @param max.presences a \code{integer} maximum number of presences
+##' @param max.absences.inside a \code{integer} maximum number of absences inside
+##'   IUCN range
+##' @param min.absences.outside a \code{integer} minimum number of absences
+##'   outside IUCN range
+##' @param max.absences.outside a \code{integer} maximum number of absences
+##'   outside IUCN range
+##' @param prop.outside a \code{numeric}, target proportion of
+##'   absences outside IUCN range (relative to total data within IUCN range)
 
 set_param_subsampling <- function(
     method,
@@ -769,9 +820,11 @@ the data inside IUCN range and a maximum of \\
 ##'   that remain after filtering of species.
 ##' @slot metaweb a \code{data.frame} with all species interactions 
 ##' that remain after filtering of species and prey.
+##' @slot trophic.groups a \code{data.frame}
 ##' @slot checklist.raw a \code{data.frame} with original information on all
 ##'   species
 ##' @slot metaweb.raw a \code{data.frame} with all original species interactions
+##' @slot trophic.groups.raw a \code{data.frame}
 ##' @slot param.gbif a \code{\link{param_gbif}} object with all parameters used
 ##'   to extract gbif data
 ##' @slot param.subsampling a \code{\link{param_subsampling}} object with all
@@ -785,8 +838,10 @@ the data inside IUCN range and a maximum of \\
 setClass("param_trophic",
          representation(checklist = "data.frame",
                         metaweb = "data.frame",
+                        trophic.groups = "data.frame",
                         checklist.raw = "data.frame",
                         metaweb.raw = "data.frame",
+                        trophic.groups.raw = "data.frame",
                         param.gbif = "param_gbif",
                         param.subsampling = "param_subsampling",
                         folder.iucn = "character"),
@@ -870,6 +925,7 @@ setClass("trophic_species",
                         filtered = "character",
                         kept.prey = "list",
                         filtered.prey = "list",
+                        species.method = "factor",
                         fresh.occurrence = "character",
                         fresh.trophic = "character"),
          validity = function(object){
@@ -898,9 +954,14 @@ setClass("trophic_species",
 setMethod('show', signature('trophic_species'),
           function(object)
           {
+            species.method <- object@species.method
             cli_h3("List of species used")
             cli_li("{length(object@kept)} species kept, {length(object@filtered)} filtered")
             cli_li("{length(unlist(object@kept.prey))} predator-prey interactions kept, {length(unlist(object@filtered.prey))} filtered")
+            cli_h3("Method used for species")
+            cli_li("{sapply(1:3, 
+       function(i){glue('{levels(species.method)[i]} ({table(species.method)[i]})')})
+}")
             invisible(NULL)
           })
 
@@ -915,29 +976,20 @@ setMethod('show', signature('trophic_species'),
 ##'
 ##' @title Dataset for running trophic SDM
 ##'
-##' @description Class returned by \code{\link{prepare_dataset}} and
-##'   \code{\link{prepare_dataset_iucn}}, that prepare a dataset for a trophic
-##'   SDM, based on a gbif or IUCN workflow.
+##' @description Class returned by \code{\link{prepare_dataset}} that prepare 
+##' a dataset for a trophic SDM, based on a gbif, IUCN or mixed workflow.
 ##'
 ##' @inheritParams gbif_outsider
 ##' @inheritParams taxonomic_conflict
 ##' @inheritParams sampling_effort
 ##' @inheritParams rasterize_iucn
-##' @param sampling.effort a \code{\link{sampling_effort}} object, generated by
-##'   \code{\link{calc_sampling_effort}} containing several layers of sampling
-##'   effort based on taxonomic group and the association between species and
-##'   the sampling effort layer
-##' @param min.gbif a \code{numeric} (\emph{default} \code{25}), the minimum
-##'   number of gbif occurrences below which a species is filtered.
-##' @param folder.iucn.buffer a \code{character}, folder in which IUCN buffered range
-##' are stored as raster files.
 ##' @param folder.iucn a \code{character}, folder in which IUCN buffered range
 ##' are stored as raster files.
 ##' @slot summary a \code{\link{trophic_summary}} with summary information on the workflow
 ##' @slot summary.raw a \code{\link{trophic_summary}} with raw summary
 ##'   information on the workflow (before filtering and subsampling)
 ##' @slot files a \code{\link{trophic_files}} with links to data files
-##' @slot param a \code{\link{trophic_param}} with the parameter used in the 
+##' @slot param a \code{\link{param_trophic}} with the parameter used in the 
 ##' workflow
 ##' @slot species a \code{\link{trophic_species}} with information on all species 
 ##'   that remains after filtering of species.
@@ -1055,7 +1107,7 @@ the data inside IUCN range and a maximum of \\
               
               
               
-              summary.trophic <- x@summary@trophic  %>% 
+              summary.trophic <- x@summary.raw@trophic  %>% 
                 mutate(
                   aim_presence = pmin(presence, param.subsampling@max.presences),
                   aim_absence_inside = pmin(presence, param.subsampling@max.absences.inside),
@@ -1075,50 +1127,42 @@ the data inside IUCN range and a maximum of \\
               if (nrow(summary.trophic) == 0) {
                 cli_alert_success("No species require subsampling")
               } else {
-                this.species <- "Ardea cinerea"
+                this.species <- "Cervus elaphus"
                 for (this.species in summary.trophic$SpeciesName) {
                   cli_progress_step(this.species)
                   this.code <- listcode[this.species]
                   # browser()
-                  this.raw <- load_data(x, SpeciesName = this.species, type = "trophic.raw")
-                  
+                  this.raw <- load_data(x,
+                                        SpeciesName = this.species,
+                                        type = "trophic.raw")
+                  this.raw$status <- "certain"
                   this.raw <- subsample_dataset(this.raw, param.subsampling)
                   #### write output and calculate summary ------------------------------------
                   
                   # write trophic.raw with subsampling info
-                  fwrite(this.raw, file = x@files@trophic.raw[this.species])
-                  this.nprey <- summary.trophic$nprey[this.index]   
-                  this.index <- which(summary.trophic$SpeciesName == this.species) 
-                  
+                  fwrite(this.raw, 
+                         file = x@files@trophic.raw[this.species],
+                         showProgress = FALSE)
+
                   # generate trophic files (subsampling + remove prey)
                   # remove subsampling
                   this.trophic <- filter(this.raw, subsample)
-                  # remove unnecessary prey
-                  this.filtered.prey <- listcode[names(x@species@filtered.prey[[this.species]])]
-                  this.to.remove <- which(this.filtered.prey %in% colnames(this.trophic))
-                  if (length(this.to.remove) > 0) {
-                    for (this.prey in this.to.remove) {
-                      this.trophic[,this.filtered.prey[this.prey]] <- NULL
-                    }
-                  }
+                  
                   # write trophic file
                   file.trophic <- paste0(project.name, "/trophic_dataset/", this.code,".csv.gz")
-                  fwrite(this.trophic, file = file.trophic)
+                  fwrite(this.trophic, 
+                         file = file.trophic, 
+                         showProgress = FALSE)
                   x@files@trophic[this.species] <- file.trophic
                   x@summary@trophic <- 
                     filter( x@summary@trophic, SpeciesName != this.species) %>% 
                     rbind(get_trophic_summary(this.trophic))
-                  if (this.nprey > 0) {
-                    x@summary@prey <- 
-                      filter(x@summary@prey, SpeciesName != this.species) %>% 
-                      rbind(get_prey_summary(this.trophic))
-                  }                   
                 }
                 cli_progress_done()
               }
               cli_alert_success("All species subsampled")
             }
-            saveRDS(x, file = paste0(x@project.name,"/",x@project.name,".trophic_dataset.rds"))
+            saveRDS(x, file = paste0(x@project.name,"/trophic_dataset.rds"))
             x
           })
 
@@ -1197,9 +1241,9 @@ setMethod('reset', signature(x = 'trophic_dataset'),
                 for (this.species in species.list) {
                   cli_progress_update()
                   this.file <- x@file.trophic.link[this.species]
-                  this.df <- fread(this.file)
+                  this.df <- fread(this.file, showProgress = FALSE)
                   this.df$subsample <- TRUE
-                  fwrite(this.df, this.file)
+                  fwrite(this.df, this.file, showProgress = FALSE)
                 }
                 cli_progress_done()
               }
@@ -1294,7 +1338,7 @@ setMethod('reset', signature(x = 'trophic_dataset'),
             #   browser()
             # }
             
-            saveRDS(x, file = paste0(x@project.name,"/",x@project.name,".trophic_dataset.rds"))
+            saveRDS(x, file = paste0(x@project.name,"/trophic_dataset.rds"))
             return(x)
           })
 
@@ -1323,6 +1367,7 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
             possible_info <- c("summary.occurrence",
                                "summary.uncertain",
                                "summary.trophic",
+                               "summary.trophic.raw",
                                "summary.prey",
                                "summary.protected",
                                "metaweb",
@@ -1348,6 +1393,8 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
               return(output)
             } else if (info == "summary.trophic") {
               return(x@summary@trophic)
+            } else if (info == "summary.trophic.raw") {
+              return(x@summary.raw@trophic)
             } else if (info == "summary.prey") {
               return(x@summary@prey)
             } else if (info == "summary.filter") {
@@ -1389,6 +1436,7 @@ setMethod('summary_trophic', signature(x = 'trophic_dataset'),
 ##' @param x an object of class \code{trophic_dataset}
 ##' @export
 ##'
+##' @importFrom ggplot2 scale_x_continuous
 
 
 setGeneric("plot_uncertain", def = function(x, ...) {
@@ -1403,7 +1451,7 @@ setGeneric("plot_uncertain", def = function(x, ...) {
 ##' @importFrom cowplot save_plot
 
 setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
-          function(x, nb.cpu = 1){
+          function(x, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             has.cluster <- .register_cluster(nb.cpu)
@@ -1431,11 +1479,11 @@ setMethod('plot_uncertain', signature(x = 'trophic_dataset'),
                                    "\n uncertain cells: ",
                                    this.summary$absence.inside.uncertain, " (",
                                    round(this.summary$prop.uncertain*100), "%)")
-              this.df <- load_data(dataset.full, SpeciesName = this.species, type = "occurrence") %>% 
+              this.df <- load_data(x, SpeciesName = this.species, type = "occurrence") %>% 
                 filter(inside_iucn) %>% 
                 mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
               g <- ggplot() +
-                geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                 geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                 scale_fill_manual(
                   "IUCN distribution",
@@ -1475,7 +1523,7 @@ setGeneric("plot_trophic", def = function(x, ...) {
 ##' @importFrom dplyr anti_join
 
 setMethod('plot_trophic', signature(x = 'trophic_dataset'),
-          function(x, nb.cpu = 1){
+          function(x, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             has.cluster <- .register_cluster(nb.cpu)
@@ -1493,9 +1541,9 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
             this.species <- "Canis lupus" 
             foreach(this.species = names(listcode)) %dopar% {
               cli_progress_step(this.species)
-              
-              this.prey.filtered <- length(x@filtered.prey[[this.species]])
-              this.prey.kept <- length(x@kept.prey[[this.species]])
+              # browser()
+              this.prey.filtered <- length(x@species@filtered.prey[[this.species]])
+              this.prey.kept <- length(x@species@kept.prey[[this.species]])
               this.prey <- this.prey.filtered + this.prey.kept
               if (this.prey > 0) {
                 
@@ -1505,14 +1553,14 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
                 this.summary <- filter(summary.uncertain, SpeciesName == this.species)
                 this.file <- paste0(plot.folder, this.Class, "_", this.Order, "_", this.species, ".png")
                 
-                this.occurrence <- load_data(dataset.full, 
+                this.occurrence <- load_data(x, 
                                              SpeciesName = this.species,
                                              type = "occurrence") 
                 this.df <- 
                   this.occurrence %>% 
                   filter(inside_iucn) %>% 
                   mutate(datatype = ifelse(presence == 1, "presence", paste0(status, " absence")))
-                this.trophic <- load_data(dataset.full, 
+                this.trophic <- load_data(x, 
                                           SpeciesName = this.species,
                                           type = "trophic") %>% 
                   select(cell, x, y)
@@ -1547,7 +1595,7 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
                                      this.prey.filtered, "/", this.prey)
                 
                 g <- ggplot() +
-                  geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                  geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                   geom_tile(data = this.df, aes(x = x, y = y, fill = datatype)) +
                   geom_tile(data = this.trophic.filtered, aes(x = x, y = y, fill = datatype)) +
                   scale_fill_manual(
@@ -1579,6 +1627,7 @@ setMethod('plot_trophic', signature(x = 'trophic_dataset'),
 ##' @param x an object of class \code{trophic_dataset}
 ##' @export
 ##'
+##' @importFrom ggplot2 guide_legend
 
 
 setGeneric("plot_dataset", def = function(x, ...) {
@@ -1594,7 +1643,7 @@ setGeneric("plot_dataset", def = function(x, ...) {
 ##' @importFrom dplyr anti_join
 
 setMethod('plot_dataset', signature(x = 'trophic_dataset'),
-          function(x, type, nb.cpu = 1){
+          function(x, type, nb.cpu = 1, maxcell = NULL){
             checklist <- summary_trophic(x, info = "checklist")
             .fun_testIfPosInt(nb.cpu)
             .fun_testIfIn(type, c("trophic", "trophic.raw"))
@@ -1612,7 +1661,7 @@ setMethod('plot_dataset', signature(x = 'trophic_dataset'),
             if (type == "trophic") {
               summary.trophic <- summary_trophic(x, info = "summary.trophic")  
             } else {
-              summary.trophic <- x@param.raw$summary.predator.raw
+              summary.trophic <- summary_trophic(x, info = "summary.trophic.raw")  
             }
             this.species <- "Ardea cinerea" 
             foreach(this.species = names(listcode)) %dopar% {
@@ -1630,7 +1679,7 @@ setMethod('plot_dataset', signature(x = 'trophic_dataset'),
                                   this.species, ".png")
               
               this.df <- 
-                load_data(dataset.full, 
+                load_data(x, 
                           SpeciesName = this.species,
                           type = type) %>% 
                 mutate(presence_plot = ifelse(presence == 1, "Presence", 
@@ -1645,7 +1694,7 @@ setMethod('plot_dataset', signature(x = 'trophic_dataset'),
                                    " and ", this.abs.outside, " (outside)")
               
               g <- ggplot() +
-                geom_spatraster(data = mutate(data.mask, layer = as.character(layer))) +
+                geom_spatraster(data = mutate(data.mask, layer = as.character(layer)), maxcell = maxcell) +
                 geom_point(data = this.df, aes(x = x, y = y, color = presence_plot), size = 0.1) +
                 scale_color_manual(
                   NULL,
@@ -1684,6 +1733,9 @@ setGeneric("rasterize_uncertain", def = function(x, ...) {
 })
 
 ##' @rdname trophic_dataset
+##' @param raster.by a \code{character}, describing which taxonomic level
+##' should be used to group the species (\code{Class}, \code{Order} or
+##'  \code{Family})
 ##' @export
 
 setMethod('rasterize_uncertain', signature(x = 'trophic_dataset'),
@@ -1733,6 +1785,7 @@ setMethod('rasterize_uncertain', signature(x = 'trophic_dataset'),
 ##' @param x an object of class \code{trophic_dataset}
 ##' @export
 ##'
+##' @importFrom terra global
 
 
 setGeneric("rasterize_prey_filtering", def = function(x, ...) {

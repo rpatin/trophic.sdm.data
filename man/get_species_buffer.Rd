@@ -13,9 +13,6 @@ range. If several taxonomic groups are valid for a given species, the
 lowest one will be prioritized. Buffer distances are given in km.}
 
 \item{checklist}{a \code{data.frame} with information on all species of interest}
-
-\item{folder.iucn.raster}{a path to a folder with all IUCN range as raster.
-used to determine which species have a IUCN range.}
 }
 \value{
 a named list with the buffer associated to each species

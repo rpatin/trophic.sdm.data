@@ -7,8 +7,11 @@
 extract_iucn(
   this.species,
   this.code,
+  data.mask = data.mask,
   folder.iucn,
   occurrence.dir,
+  occurrence.rast.dir,
+  status.rast.dir,
   project.name,
   logfile,
   overwrite
@@ -19,14 +22,26 @@ extract_iucn(
 
 \item{this.code}{a \code{character}: species code}
 
+\item{data.mask}{a \code{SpatRaster} with the extent and the grid used 
+in the project}
+
 \item{folder.iucn}{a \code{character}, folder with IUCN distribution as raster}
 
 \item{occurrence.dir}{a \code{character}, folder to store occurrence data}
+
+\item{occurrence.rast.dir}{a \code{character}, folder to store occurrence 
+raster files.}
+
+\item{status.rast.dir}{a \code{character}, folder to store data status 
+raster files.}
 
 \item{project.name}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
 
 \item{logfile}{a \code{character}, file to store logs}
+
+\item{overwrite}{a \code{boolean}, whether occurrence dataset should be 
+overwritten.}
 }
 \description{
 \code{extract_iucn} retrieve IUCN data from files with a given 

@@ -8,6 +8,8 @@
 ##' 
 ##' @inheritParams gbif_outsider
 ##' @param species.name a \code{character} corresponding to the species name
+##' @param all.columns a \code{boolean}, whether all columns should be returned 
+##' or not.
 ##' @return a data.frame or a character if the loading failed
 ##' @export
 ##' @importFrom data.table fread
@@ -173,11 +175,11 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
                                                  Code = Code,
                                                  type = type)
             if (type == "trophic") {
-              df <- fread(x@files@trophic[SpeciesName])
+              df <- fread(x@files@trophic[SpeciesName], showProgress = FALSE)
             } else if (type == "trophic.raw") {
-              df <- fread(x@files@trophic.raw[SpeciesName])
+              df <- fread(x@files@trophic.raw[SpeciesName], showProgress = FALSE)
             } else if (type == "occurrence") {
-              df <- fread(x@files@occurrence[SpeciesName])
+              df <- fread(x@files@occurrence[SpeciesName], showProgress = FALSE)
             }
             df
           })
@@ -240,7 +242,7 @@ setMethod('load_data', signature(x = 'trophic_dataset'),
 load_dataset <- function(project.name){
   .fun_testIfInherits(project.name, 'character')
   .fun_testIfDirExists(project.name)
-  this.file <- paste0(project.name,"/",project.name,".trophic_dataset.rds")
+  this.file <- paste0(project.name,"/trophic_dataset.rds")
   if (file.exists(this.file)) {
     return(readRDS(this.file))
   } else {

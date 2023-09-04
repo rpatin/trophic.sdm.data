@@ -18,6 +18,8 @@ Class contained within \code{\link{trophic_dataset}}. A
   dataset generated throughout the function \code{\link{prepare_dataset}}:
   \itemize{
   \item Occurrence files (focal species only)
+  \item Occurrence files (as \code{\link{SpatRaster}})
+  \item Status files (as \code{\link{SpatRaster}})
   \item Raw trophic files (focal species and its prey)
   \item Final trophic files (final subsampled dataset)
   }
@@ -27,6 +29,12 @@ Class contained within \code{\link{trophic_dataset}}. A
 \describe{
 \item{\code{occurrence}}{a named \code{vector} with a path to raw 
 occurrence data for each species.}
+
+\item{\code{occurrence.rast}}{a named \code{vector} with a path to raw raster 
+occurrence data for each species.}
+
+\item{\code{status.rast}}{a named \code{vector} with a path to raster data 
+containing status of data (certain vs uncertain) for each species.}
 
 \item{\code{trophic}}{a named \code{vector} with a path to filtered
 trophic data for each species.}

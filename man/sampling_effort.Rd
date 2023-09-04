@@ -29,6 +29,11 @@ calc_sampling_effort(
 \item{sampling.effort.config}{a named \code{list} with one element per effort
 layer to be calculated. Contains layer name as well as their associated taxa.}
 
+\item{filter.atlas}{a \code{boolean}, whether atlas data should be filtered.
+The method only exclude data with precision <10km in the gbif dataset. It is
+not quite reliable as many atlas data are registered with a very high 
+precision, despite describing squares of 25km side.}
+
 \item{data.mask}{a \code{SpatRaster} with the extent and the grid used 
 in the project}
 
@@ -59,6 +64,9 @@ species}
 
 \item{\code{project.name}}{a \code{character} indicating the folder in which logfiles 
 and data may be written}
+
+\item{\code{filled}}{a \code{boolean}, whether or not the object is empty of filled 
+with data}
 }}
 
 \examples{

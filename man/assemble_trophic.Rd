@@ -8,24 +8,50 @@ assemble_trophic(
   this.species,
   listcode,
   file.occurrence.link,
+  file.occurrence.rast.link,
+  file.status.rast.link,
   raw.dir,
   param,
   overwrite,
   fresh.occurrence,
   subsample.assemble,
-  IUCN.link = IUCN.link
+  trophic.groups,
+  IUCN.link
 )
 }
 \arguments{
-\item{this.species}{a \code{character}: species name}
+\item{this.species}{a \code{character}: current species name}
 
-\item{this.code}{a \code{character}: species code}
+\item{listcode}{a named \code{character} vector: all species code}
 
-\item{folder.iucn}{a \code{character}, folder with IUCN distribution as raster}
+\item{file.occurrence.link}{a \code{character} vector, links to
+occurrence files}
 
-\item{occurrence.dir}{a \code{character}, folder to store occurrence data}
+\item{file.occurrence.rast.link}{a \code{character} vector, links 
+to occurrence files as raster}
 
-\item{logfile}{a \code{character}, file to store logs}
+\item{file.status.rast.link}{a \code{character} vector, links 
+to data status files as raster (certain or uncertain data)}
+
+\item{raw.dir}{a \code{character} vector, folder in which to store raw 
+(not subsampled) trophic dataset}
+
+\item{param}{a \code{\link{param_trophic}} object with all parameters}
+
+\item{overwrite}{a \code{boolean}. When TRUE, all trophic dataset are 
+recalculated. When FALSE, only trophic dataset for which prey or predator data
+were refreshed are recalculated.}
+
+\item{fresh.occurrence}{a named \code{boolean} vector, describing which 
+species occurrence were updated.}
+
+\item{subsample.assemble}{a \code{boolean}, whether some subsampling 
+occurs before assembling the trophic dataset.}
+
+\item{trophic.groups}{a \code{data.frame}, describing the trophic groups}
+
+\item{IUCN.link}{a named \code{character} vector, with links to species
+IUCN data.}
 }
 \description{
 \code{extract_iucn} retrieve IUCN data from files with a given 

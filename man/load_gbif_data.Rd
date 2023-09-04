@@ -10,6 +10,14 @@ load_gbif_data(species.name, folder.gbif, filter.atlas, all.columns = FALSE)
 \item{species.name}{a \code{character} corresponding to the species name}
 
 \item{folder.gbif}{a \code{character}: folders in which gbif data are stored}
+
+\item{filter.atlas}{a \code{boolean}, whether atlas data should be filtered.
+The method only exclude data with precision <10km in the gbif dataset. It is
+not quite reliable as many atlas data are registered with a very high 
+precision, despite describing squares of 25km side.}
+
+\item{all.columns}{a \code{boolean}, whether all columns should be returned 
+or not.}
 }
 \value{
 a data.frame or a character if the loading failed

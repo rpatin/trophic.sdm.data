@@ -19,30 +19,39 @@ library(badger)
 
 
 # News 
+## v0.1.0 First Release (29/08/2023)
+- Fixed and completed documentation
+- Bugfix to summary function
 
-## v.0.0.5
-### Upcoming features
-- evaluations
+## v0.0.5 (pre-release)
+### Features
 - calculation of aggregated prey metrics
-- splitting of trophic group in metaweb
+- mixed workflow (backup IUCN) is possible to parameterize:
+  - when not enough occurrences are present in gbif
+  - when gbif extraction failed
+  - when certainty threshold are too low
+  - when there are too high proportion of uncertain cell within IUCN range
+- improved and speed up workflow using raster to calculate aggregated prey metrics
+- improved show method for trophic_dataset
+- added overwrite options
 
-## v.0.0.4 (12/06/2023)
+## v0.0.4 (12/06/2023)
 - support for multiple resolutions
 - workflow for IUCN
 - improved subsampling
 - improved workflow 
 
-## v.0.0.3
+## v0.0.3
 - subsampling of absences outside IUCN distribution
 - support for filtering atlas data 
 
-## v.0.0.2 - Bugfix Release (22/02/2023)
+## v0.0.2 - Bugfix Release (22/02/2023)
 
 ### bugfix
 - threshold are now always discrete values
 - buffer_iucn only create non-existing files
 
-## v.0.0.1 - First Release (21/02/2023)
+## v0.0.1 - First Release (21/02/2023)
 
 ### Release feature
 - workflow for trophic dataset based on gbif data

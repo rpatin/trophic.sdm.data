@@ -11,6 +11,7 @@ buffer_iucn(
   data.mask,
   project.name,
   buffer.config,
+  overwrite = TRUE,
   nb.cpu = 1
 )
 }
@@ -33,6 +34,9 @@ and data may be written}
 Family, Species) and associated distance that will be used to buffer IUCN
 range. If several taxonomic groups are valid for a given species, the
 lowest one will be prioritized. Buffer distances are given in km.}
+
+\item{overwrite}{a \code{boolean}, whether previous results should be 
+overwritten or not}
 
 \item{nb.cpu}{number of CPU to use}
 }

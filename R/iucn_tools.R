@@ -15,12 +15,6 @@
 ##' @inheritParams taxonomic_conflict
 ##' @inheritParams sampling_effort
 ##' @inheritParams .register_cluster
-##' @param list.iucn a named list of IUCN shapefile path. Name must be Amphibia_Old,
-##' Amphibia_New, Mammalia_Old, Mammalia_New, Reptilia_Old, Reptilia_New, Aves.
-##' @param buffer.config a named \code{list} with taxonomic groups (Class, Order,
-##'   Family, Species) and associated distance that will be used to buffer IUCN
-##'   range. If several taxonomic groups are valid for a given species, the
-##'   lowest one will be prioritized. Buffer distances are given in km.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
 ##' @export
 
@@ -178,6 +172,8 @@ rasterize_iucn <- function(checklist,
 ##'   lowest one will be prioritized. Buffer distances are given in km.
 ##' @param folder.iucn.raster a path to a folder with all IUCN range as raster.
 ##' used to determine which species have a IUCN range.
+##' @param overwrite a \code{boolean}, whether previous results should be 
+##' overwritten or not
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
 ##' @importFrom cli cli_status_clear
 ##' @return a named list with the buffer associated to each species
@@ -190,6 +186,7 @@ buffer_iucn <- function(checklist,
                         data.mask,
                         project.name,
                         buffer.config,
+                        overwrite = TRUE,
                         nb.cpu = 1){
   cli_status_clear()
   cli_h1("Buffer IUCN range maps")
@@ -200,6 +197,7 @@ buffer_iucn <- function(checklist,
                                   data.mask = data.mask,
                                   project.name = project.name,
                                   buffer.config = buffer.config,
+                                  overwrite = overwrite,
                                   nb.cpu = nb.cpu)
   for (argi in names(args)) { assign(x = argi, value = args[[argi]]) }
   
@@ -249,7 +247,7 @@ buffer_iucn <- function(checklist,
         project.name = project.name,
         open = "a",
         silent = TRUE)
-    } else if (!file.exists(this.out.file)) {
+    } else if (!file.exists(this.out.file) | overwrite) {
       cli_progress_step(this.species)
 
       read.try <- try({
@@ -314,6 +312,7 @@ buffer_iucn <- function(checklist,
                                     data.mask,
                                     project.name,
                                     buffer.config,
+                                    overwrite, 
                                     nb.cpu){
   
   
@@ -335,6 +334,10 @@ buffer_iucn <- function(checklist,
   #### folder.iucn.raster -----------------------------------------------------------
   .fun_testIfInherits(folder.iucn.raster, "character")
   .fun_testIfDirExists(folder.iucn.raster)
+  
+  #### overwrite ------------------
+  
+  stopifnot(is.logical(overwrite))
   
   #### nb.cpu -------------------------------------------------------  
   .fun_testIfPosInt(nb.cpu)
@@ -378,10 +381,9 @@ buffer_iucn <- function(checklist,
 ##'   Family, Species) and associated distance that will be used to buffer IUCN
 ##'   range. If several taxonomic groups are valid for a given species, the
 ##'   lowest one will be prioritized. Buffer distances are given in km.
-##' @param folder.iucn.raster a path to a folder with all IUCN range as raster.
-##' used to determine which species have a IUCN range.
 ##' @importFrom terra focal rast vect buffer aggregate rasterize
 ##' @return a named list with the buffer associated to each species
+##' @export
 
 get_species_buffer <- function(buffer.config, checklist){
   .check_checklist(checklist)
